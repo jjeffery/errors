@@ -9,13 +9,43 @@ import (
 	"strings"
 )
 
-type _error struct {
-	msg    string
+// KeyValue is a key-value pair containing additional information
+// relevant to an error.
+type keyValueT struct {
+	key   string
+	value interface{}
+}
+
+type context struct {
 	pairs  []keyValueT
-	cause  error
 	caller string
 }
 
+// clone creates a deep copy of the context.
+func (ctx context) clone() context {
+	ctx2 := context{
+		caller: ctx.caller,
+	}
+	if len(ctx.pairs) > 0 {
+		ctx2.pairs = make([]keyValueT, len(ctx.pairs))
+		copy(ctx2.pairs, ctx.pairs)
+	}
+	return ctx2
+}
+
+func (ctx *context) applyOptions(opts []Option) {
+	for _, opt := range opts {
+		opt(ctx)
+	}
+}
+
+type _error struct {
+	context
+	msg   string
+	cause error
+}
+
+// Error implements the error interface.
 func (e *_error) Error() string {
 	var buf bytes.Buffer
 	buf.WriteString(e.msg)
@@ -41,48 +71,61 @@ func (e *_error) Error() string {
 	return buf.String()
 }
 
+// Cause implements the causer interface, for compatiblity with
+// the github.com/pkg/errors package.
+func (e *_error) Cause() error {
+	return e.cause
+}
+
 // New creates a new error.
 func New(msg string, opts ...Option) error {
-	return newError(msg, opts...)
+	var ctx context
+	return newError(ctx, nil, msg, opts)
 }
 
-// Wrap creates an error that wraps an existing error, providing additional fields.
+// Wrap creates an error that wraps an existing error, optionally providing additional information.
 func Wrap(err error, msg string, opts ...Option) error {
-	e := newError(msg, opts...)
-	e.cause = err
-	return e
+	var ctx context
+	return newError(ctx, err, msg, opts)
 }
 
-func newError(msg string, opts ...Option) *_error {
-	e := &_error{
-		msg: msg,
+func newError(ctx context, cause error, msg string, opts []Option) *_error {
+	ctx = ctx.clone()
+	ctx.applyOptions(opts)
+	return &_error{
+		context: ctx,
+		msg:     msg,
+		cause:   cause,
 	}
-	for _, opt := range opts {
-		opt(e)
-	}
-	return e
 }
 
 // Option represents additional information that can be associated
 // with an error.
-type Option func(*_error)
+type Option func(*context)
 
-// KV associates a key-value pair with an error.
+// KV associates a single key-value pair with an error.
 func KV(key string, value interface{}) Option {
-	return func(e *_error) {
+	return func(ctx *context) {
 		kv := keyValueT{
 			key:   key,
 			value: value,
 		}
-		e.pairs = append(e.pairs, kv)
+		ctx.pairs = append(ctx.pairs, kv)
 	}
 }
 
-// KeyValue is a key-value pair containing additional information
-// relevant to an error.
-type keyValueT struct {
-	key   string
-	value interface{}
+func Keyvals(keyvals ...interface{}) Option {
+	return func(ctx *context) {
+		for i := 0; i < len(keyvals); i += 2 {
+			if k, ok := keyvals[i].(string); ok {
+				kv := keyValueT{
+					key:   k,
+					value: keyvals[i+1],
+				}
+				ctx.pairs = append(ctx.pairs, kv)
+			}
+		}
+	}
 }
 
 // Caller is used to add a key-value pair to the error indicating
@@ -90,11 +133,11 @@ type keyValueT struct {
 // the number of stack frames to ascend, with 0 identifying the
 // caller of Caller.
 func Caller(skip int) Option {
-	return func(e *_error) {
-		if pc, file, line, ok := runtime.Caller(skip + 3); ok {
+	return func(ctx *context) {
+		if pc, file, line, ok := runtime.Caller(skip + 4); ok {
 			fn := runtime.FuncForPC(pc)
 			file = trimGOPATH(fn.Name(), file)
-			e.caller = fmt.Sprintf("%s:%d", file, line)
+			ctx.caller = fmt.Sprintf("%s:%d", file, line)
 		}
 	}
 }
@@ -139,4 +182,47 @@ func trimGOPATH(name, file string) string {
 	// get back to 0 or trim the leading separator
 	file = file[i+len(sep):]
 	return file
+}
+
+// A Context can be useful for specifying key-value pairs to be associated with
+// any error messages that might be generated in a function.
+type Context interface {
+	New(msg string, opts ...Option) error
+	Wrap(err error, msg string, opts ...Option) error
+	NewContext(opts ...Option) Context
+	Caller(skip int) Option
+	KV(key string, value interface{}) Option
+	Keyvals(keyvals ...interface{}) Option
+}
+
+func NewContext(opts ...Option) Context {
+	var ctx context
+	ctx.applyOptions(opts)
+	return &ctx
+}
+
+func (ctx *context) New(msg string, opts ...Option) error {
+	return newError(*ctx, nil, msg, opts)
+}
+
+func (ctx *context) Wrap(err error, msg string, opts ...Option) error {
+	return newError(*ctx, err, msg, opts)
+}
+
+func (ctx *context) NewContext(opts ...Option) Context {
+	ctx2 := ctx.clone()
+	ctx2.applyOptions(opts)
+	return &ctx2
+}
+
+func (ctx *context) Caller(skip int) Option {
+	return Caller(skip + 1)
+}
+
+func (ctx *context) KV(key string, value interface{}) Option {
+	return KV(key, value)
+}
+
+func (ctx *context) Keyvals(keyvals ...interface{}) Option {
+	return Keyvals(keyvals)
 }
