@@ -9,34 +9,11 @@ import (
 	"strings"
 )
 
-// KeyValue is a key-value pair containing additional information
+// keyValue is a key-value pair containing additional information
 // relevant to an error.
-type keyValueT struct {
+type keyValue struct {
 	key   string
 	value interface{}
-}
-
-type context struct {
-	pairs  []keyValueT
-	caller string
-}
-
-// clone creates a deep copy of the context.
-func (ctx context) clone() context {
-	ctx2 := context{
-		caller: ctx.caller,
-	}
-	if len(ctx.pairs) > 0 {
-		ctx2.pairs = make([]keyValueT, len(ctx.pairs))
-		copy(ctx2.pairs, ctx.pairs)
-	}
-	return ctx2
-}
-
-func (ctx *context) applyOptions(opts []Option) {
-	for _, opt := range opts {
-		opt(ctx)
-	}
 }
 
 type _error struct {
@@ -80,23 +57,13 @@ func (e *_error) Cause() error {
 // New creates a new error.
 func New(msg string, opts ...Option) error {
 	var ctx context
-	return newError(ctx, nil, msg, opts)
+	return ctx.newError(nil, msg, opts)
 }
 
 // Wrap creates an error that wraps an existing error, optionally providing additional information.
 func Wrap(err error, msg string, opts ...Option) error {
 	var ctx context
-	return newError(ctx, err, msg, opts)
-}
-
-func newError(ctx context, cause error, msg string, opts []Option) *_error {
-	ctx = ctx.clone()
-	ctx.applyOptions(opts)
-	return &_error{
-		context: ctx,
-		msg:     msg,
-		cause:   cause,
-	}
+	return ctx.newError(err, msg, opts)
 }
 
 // Option represents additional information that can be associated
@@ -106,7 +73,7 @@ type Option func(*context)
 // KV associates a single key-value pair with an error.
 func KV(key string, value interface{}) Option {
 	return func(ctx *context) {
-		kv := keyValueT{
+		kv := keyValue{
 			key:   key,
 			value: value,
 		}
@@ -114,11 +81,17 @@ func KV(key string, value interface{}) Option {
 	}
 }
 
+// Keyvals provides a way to specifiy multiple key-value pairs.
+// The keyvals parameter is a variadic sequence of alternating keys and values.
+// The keys must be of type string, otherwise they are ignored.
+//
+// Function KV provides a more typesafe alternative to Keyvals, although
+// it is a little more verbose.
 func Keyvals(keyvals ...interface{}) Option {
 	return func(ctx *context) {
 		for i := 0; i < len(keyvals); i += 2 {
 			if k, ok := keyvals[i].(string); ok {
-				kv := keyValueT{
+				kv := keyValue{
 					key:   k,
 					value: keyvals[i+1],
 				}
@@ -133,8 +106,14 @@ func Keyvals(keyvals ...interface{}) Option {
 // the number of stack frames to ascend, with 0 identifying the
 // caller of Caller.
 func Caller(skip int) Option {
+	// additionalSkip is the number of stack frames used by
+	// this package in a call to the function returned by
+	// this function. It needs to be added to the number
+	// if skip frames requested by the calling program.
+	const additionalSkip = 4
+
 	return func(ctx *context) {
-		if pc, file, line, ok := runtime.Caller(skip + 4); ok {
+		if pc, file, line, ok := runtime.Caller(skip + additionalSkip); ok {
 			fn := runtime.FuncForPC(pc)
 			file = trimGOPATH(fn.Name(), file)
 			ctx.caller = fmt.Sprintf("%s:%d", file, line)
@@ -182,47 +161,4 @@ func trimGOPATH(name, file string) string {
 	// get back to 0 or trim the leading separator
 	file = file[i+len(sep):]
 	return file
-}
-
-// A Context can be useful for specifying key-value pairs to be associated with
-// any error messages that might be generated in a function.
-type Context interface {
-	New(msg string, opts ...Option) error
-	Wrap(err error, msg string, opts ...Option) error
-	NewContext(opts ...Option) Context
-	Caller(skip int) Option
-	KV(key string, value interface{}) Option
-	Keyvals(keyvals ...interface{}) Option
-}
-
-func NewContext(opts ...Option) Context {
-	var ctx context
-	ctx.applyOptions(opts)
-	return &ctx
-}
-
-func (ctx *context) New(msg string, opts ...Option) error {
-	return newError(*ctx, nil, msg, opts)
-}
-
-func (ctx *context) Wrap(err error, msg string, opts ...Option) error {
-	return newError(*ctx, err, msg, opts)
-}
-
-func (ctx *context) NewContext(opts ...Option) Context {
-	ctx2 := ctx.clone()
-	ctx2.applyOptions(opts)
-	return &ctx2
-}
-
-func (ctx *context) Caller(skip int) Option {
-	return Caller(skip + 1)
-}
-
-func (ctx *context) KV(key string, value interface{}) Option {
-	return KV(key, value)
-}
-
-func (ctx *context) Keyvals(keyvals ...interface{}) Option {
-	return Keyvals(keyvals)
 }
