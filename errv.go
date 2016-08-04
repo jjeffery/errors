@@ -47,6 +47,9 @@ func New(msg string, opts ...Option) error {
 
 // Wrap creates an error that wraps an existing error, optionally providing additional information.
 func Wrap(err error, msg string, opts ...Option) error {
+	if err == nil {
+		return nil
+	}
 	var ctx context
 	return ctx.newError(err, msg, opts)
 }
