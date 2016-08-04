@@ -21,9 +21,8 @@ func KV(key string, value interface{}) Option {
 	}
 }
 
-// Keyvals provides a way to specifiy multiple key-value pairs.
+// Keyvals provides a way to associate multiple key-value pairs with the error.
 // The keyvals parameter is a variadic sequence of alternating keys and values.
-// The keys must be of type string, otherwise they are ignored.
 //
 // Function KV provides a more typesafe alternative to Keyvals, although
 // it is a little more verbose.
@@ -41,10 +40,9 @@ func Keyvals(keyvals ...interface{}) Option {
 	}
 }
 
-// Caller is used to add a key-value pair to the error indicating
-// the file and line number for the caller. The argument skip is
-// the number of stack frames to ascend, with 0 identifying the
-// caller of Caller.
+// Caller associates the file and line number of the caller with
+// the error. The argument skip is the number of stack frames to
+// ascend, with 0 identifying the caller of Caller.
 func Caller(skip int) Option {
 	// additionalSkip is the number of stack frames used by
 	// this package in a call to the function returned by
