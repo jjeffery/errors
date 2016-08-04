@@ -1,8 +1,7 @@
 package errv
 
-// Cause has been copied from https://github.com/pkg/errors
+// Cause was copied from https://github.com/pkg/errors
 // for compatibility.
-// Licence: BSD 2-clause: https://github.com/pkg/errors/blob/master/LICENSE
 
 // Cause returns the underlying cause of the error, if possible.
 // An error value has a cause if it implements the following

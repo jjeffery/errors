@@ -19,6 +19,13 @@ func NewContext(opts ...Option) Context {
 	return ctx
 }
 
+// keyValue is a key-value pair containing additional information
+// relevant to an error.
+type keyValue struct {
+	key   string
+	value interface{}
+}
+
 // A context implements the public Context interface.
 type context struct {
 	pairs  []keyValue
@@ -72,7 +79,7 @@ func (ctx *context) applyOptions(opts []Option) {
 func (ctx context) newError(err error, msg string, opts []Option) error {
 	ctx = ctx.clone()
 	ctx.applyOptions(opts)
-	return &_error{
+	return &errorT{
 		context: ctx,
 		msg:     msg,
 		cause:   err,
