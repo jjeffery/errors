@@ -1,6 +1,4 @@
-// Package errv provides a simple interface for
-// error handling that works well with structured logging.
-package errv
+package errorv
 
 import (
 	"bytes"
@@ -69,7 +67,7 @@ func (e *errorT) Keyvals() []interface{} {
 		keyvals = append(keyvals, "msg", e.msg)
 	} else if e.cause != nil {
 		// This happens when an error is wrapped without a message,
-		// eg errv.Wrap(err, "", ...). In this case use the cause message
+		// eg errorv.Wrap(err, "", ...). In this case use the cause message
 		// as the error message.
 		keyvals = append(keyvals, "msg", e.cause.Error())
 	} else {

@@ -1,4 +1,4 @@
-package errv
+package errorv
 
 // Cause was copied from https://github.com/pkg/errors
 // for compatibility.

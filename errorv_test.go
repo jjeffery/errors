@@ -1,6 +1,8 @@
-package errv
+package errorv
 
 import (
+	"io"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -43,7 +45,7 @@ func TestNew(t *testing.T) {
 			},
 			// WARNING: this test is pretty brittle: if you move
 			// any lines in this file you will have to change expect.
-			expect: "msg github.com/jjeffery/errv/errv_test.go:51",
+			expect: "msg github.com/jjeffery/errorv/errorv_test.go:53",
 		},
 	}
 
@@ -59,5 +61,47 @@ func TestWrapNil(t *testing.T) {
 	got := Wrap(nil, "no error")
 	if got != nil {
 		t.Errorf("Wrap(nil, \"no error\"): got %#v, expected nil", got)
+	}
+}
+
+type nilError struct{}
+
+func (nilError) Error() string { return "nil error" }
+
+func TestCause(t *testing.T) {
+	x := New("error")
+	tests := []struct {
+		err  error
+		want error
+	}{{
+		// nil error is nil
+		err:  nil,
+		want: nil,
+	}, {
+		// explicit nil error is nil
+		err:  (error)(nil),
+		want: nil,
+	}, {
+		// typed nil is nil
+		err:  (*nilError)(nil),
+		want: (*nilError)(nil),
+	}, {
+		// uncaused error is unaffected
+		err:  io.EOF,
+		want: io.EOF,
+	}, {
+		// caused error returns cause
+		err:  Wrap(io.EOF, "ignored"),
+		want: io.EOF,
+	}, {
+		err:  x, // return from errors.New
+		want: x,
+	}}
+
+	for i, tt := range tests {
+		got := Cause(tt.err)
+		if !reflect.DeepEqual(got, tt.want) {
+			t.Errorf("test %d: got %#v, want %#v", i+1, got, tt.want)
+		}
 	}
 }

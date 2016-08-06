@@ -1,4 +1,4 @@
-package errv
+package errorv
 
 // A Context can be useful for specifying key-value pairs to be associated with
 // any error messages that might be generated in a function.
