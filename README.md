@@ -1,6 +1,6 @@
-# errv [![GoDoc](https://godoc.org/github.com/jjeffery/errv?status.svg)](https://godoc.org/github.com/jjeffery/errv)
+# errorv [![GoDoc](https://godoc.org/github.com/jjeffery/errorv?status.svg)](https://godoc.org/github.com/jjeffery/errorv)
 
-Package errv provides a simple error API that works well with structured logging.
+Package `errorv` provides a simple error API that works well with structured logging.
 
 This package is experimental, and has no backwards compatibility guarantee.
 
