@@ -5,15 +5,63 @@ import (
 	"fmt"
 )
 
+// New creates a new error.
+func New(msg string, opts ...Option) error {
+	var ctx context
+	return ctx.newError(msg, opts)
+}
+
+// Wrap creates an error that wraps an existing error, optionally providing additional information.
+// If err is nil, Wrap returns nil.
+func Wrap(err error, msg string, opts ...Option) error {
+	var ctx context
+	return ctx.wrapError(err, msg, opts)
+}
+
+// Cause was copied from https://github.com/pkg/errors
+// for compatibility.
+
+// Cause returns the underlying cause of the error, if possible.
+// An error value has a cause if it implements the following
+// interface:
+//
+//     type causer interface {
+//            Cause() error
+//     }
+//
+// If the error does not implement Cause, the original error will
+// be returned. If the error is nil, nil will be returned without further
+// investigation.
+func Cause(err error) error {
+	type causer interface {
+		Cause() error
+	}
+
+	for err != nil {
+		cause, ok := err.(causer)
+		if !ok {
+			break
+		}
+		err = cause.Cause()
+	}
+	return err
+}
+
 type errorT struct {
 	context
-	msg   string
-	cause error
+	msg string
 }
 
 // Error implements the error interface.
 func (e *errorT) Error() string {
 	var buf bytes.Buffer
+	e.errorBuf(&buf)
+	return buf.String()
+}
+
+// errorBuf fills a buffer with text for an error message.
+// Shared with causeT Error implementation.
+func (e *errorT) errorBuf(buf *bytes.Buffer) {
 	buf.WriteString(e.msg)
 	for _, kv := range e.pairs {
 		if buf.Len() > 0 {
@@ -29,33 +77,6 @@ func (e *errorT) Error() string {
 		}
 		buf.WriteString(e.caller)
 	}
-	if e.cause != nil {
-		buf.WriteRune(':')
-		buf.WriteRune(' ')
-		buf.WriteString(e.cause.Error())
-	}
-	return buf.String()
-}
-
-// New creates a new error.
-func New(msg string, opts ...Option) error {
-	var ctx context
-	return ctx.newError(nil, msg, opts)
-}
-
-// Wrap creates an error that wraps an existing error, optionally providing additional information.
-func Wrap(err error, msg string, opts ...Option) error {
-	if err == nil {
-		return nil
-	}
-	var ctx context
-	return ctx.newError(err, msg, opts)
-}
-
-// Cause implements the causer interface, for compatiblity with
-// the github.com/pkg/errors package.
-func (e *errorT) Cause() error {
-	return e.cause
 }
 
 // Keyvals returns the contents of the error
@@ -65,14 +86,7 @@ func (e *errorT) Keyvals() []interface{} {
 
 	if e.msg != "" {
 		keyvals = append(keyvals, "msg", e.msg)
-	} else if e.cause != nil {
-		// This happens when an error is wrapped without a message,
-		// eg errorv.Wrap(err, "", ...). In this case use the cause message
-		// as the error message.
-		keyvals = append(keyvals, "msg", e.cause.Error())
 	} else {
-		// Unlikely to happen, but we want to guarantee the downstream logging library
-		// that the first pair will have the key "msg".
 		keyvals = append(keyvals, "msg", "(no message)")
 	}
 	for _, kv := range e.pairs {
@@ -81,8 +95,34 @@ func (e *errorT) Keyvals() []interface{} {
 	if e.caller != "" {
 		keyvals = append(keyvals, "caller", e.caller)
 	}
-	if e.cause != nil && e.msg != "" {
-		keyvals = append(keyvals, "cause", e.cause.Error())
-	}
+	return keyvals
+}
+
+type causeT struct {
+	errorT
+	cause error
+}
+
+// Error implements the error interface.
+func (c *causeT) Error() string {
+	var buf bytes.Buffer
+	c.errorBuf(&buf)
+	buf.WriteRune(':')
+	buf.WriteRune(' ')
+	buf.WriteString(c.cause.Error())
+	return buf.String()
+}
+
+// Cause implements the causer interface, for compatiblity with
+// the github.com/pkg/errors package.
+func (c *causeT) Cause() error {
+	return c.cause
+}
+
+// Keyvals returns the contents of the error
+// as an array of alternating keys and values.
+func (c *causeT) Keyvals() []interface{} {
+	keyvals := c.errorT.Keyvals()
+	keyvals = append(keyvals, "cause", c.cause.Error())
 	return keyvals
 }

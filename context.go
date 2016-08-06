@@ -33,11 +33,11 @@ type context struct {
 }
 
 func (ctx context) New(msg string, opts ...Option) error {
-	return ctx.newError(nil, msg, opts)
+	return ctx.newError(msg, opts)
 }
 
 func (ctx context) Wrap(err error, msg string, opts ...Option) error {
-	return ctx.newError(err, msg, opts)
+	return ctx.wrapError(err, msg, opts)
 }
 
 func (ctx context) NewContext(opts ...Option) Context {
@@ -76,12 +76,26 @@ func (ctx *context) applyOptions(opts []Option) {
 	}
 }
 
-func (ctx context) newError(err error, msg string, opts []Option) error {
+func (ctx context) newError(msg string, opts []Option) error {
 	ctx = ctx.clone()
 	ctx.applyOptions(opts)
 	return &errorT{
 		context: ctx,
 		msg:     msg,
-		cause:   err,
+	}
+}
+
+func (ctx context) wrapError(cause error, msg string, opts []Option) error {
+	if cause == nil {
+		return nil
+	}
+	ctx = ctx.clone()
+	ctx.applyOptions(opts)
+	return &causeT{
+		errorT: errorT{
+			msg:     msg,
+			context: ctx,
+		},
+		cause: cause,
 	}
 }
