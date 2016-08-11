@@ -163,3 +163,43 @@ func TestAttach(t *testing.T) {
 		}
 	}
 }
+
+func TestKeyvals(t *testing.T) {
+	tests := []struct {
+		err     error
+		keyvals []interface{}
+	}{
+		{
+			err:     New("message"),
+			keyvals: []interface{}{"msg", "message"},
+		},
+		{
+			err:     New("message", KV("k1", "v1"), KV("k2", 2)),
+			keyvals: []interface{}{"msg", "message", "k1", "v1", "k2", 2},
+		},
+		{
+			err:     Wrap(io.EOF, "message", KV("k1", "v1"), KV("k2", 2)),
+			keyvals: []interface{}{"msg", "message", "k1", "v1", "k2", 2, "cause", "EOF"},
+		},
+		{
+			err:     Attach(io.EOF, KV("k1", "v1"), KV("k2", 2)),
+			keyvals: []interface{}{"msg", "EOF", "k1", "v1", "k2", 2},
+		},
+	}
+
+	type keyvalser interface {
+		Keyvals() []interface{}
+	}
+
+	for i, tt := range tests {
+		keyvals, ok := tt.err.(keyvalser)
+		if !ok {
+			t.Errorf("%d: expected Keyvals(), none available", i)
+			continue
+		}
+		kvs := keyvals.Keyvals()
+		if !reflect.DeepEqual(tt.keyvals, kvs) {
+			t.Errorf("%d: expected %v, actual %v", i, tt.keyvals, kvs)
+		}
+	}
+}
