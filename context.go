@@ -1,10 +1,16 @@
 package errorv
 
+import (
+	"bytes"
+	"fmt"
+)
+
 // A Context can be useful for specifying key-value pairs to be associated with
 // any error messages that might be generated in a function.
 type Context interface {
 	New(msg string, opts ...Option) error
 	Wrap(err error, msg string, opts ...Option) error
+	Attach(err error, opts ...Option) error
 	NewContext(opts ...Option) Context
 	Caller(skip int) Option
 	KV(key string, value interface{}) Option
@@ -38,6 +44,10 @@ func (ctx context) New(msg string, opts ...Option) error {
 
 func (ctx context) Wrap(err error, msg string, opts ...Option) error {
 	return ctx.wrapError(err, msg, opts)
+}
+
+func (ctx context) Attach(err error, opts ...Option) error {
+	return ctx.attachError(err, opts)
 }
 
 func (ctx context) NewContext(opts ...Option) Context {
@@ -76,6 +86,18 @@ func (ctx *context) applyOptions(opts []Option) {
 	}
 }
 
+func (ctx *context) mergeFrom(other context) {
+	for _, kv := range other.pairs {
+		// TODO: check for duplicates
+		ctx.pairs = append(ctx.pairs, kv)
+	}
+
+	// TODO: fix
+	if ctx.caller == "" {
+		ctx.caller = other.caller
+	}
+}
+
 func (ctx context) newError(msg string, opts []Option) error {
 	ctx = ctx.clone()
 	ctx.applyOptions(opts)
@@ -97,5 +119,62 @@ func (ctx context) wrapError(cause error, msg string, opts []Option) error {
 			context: ctx,
 		},
 		cause: cause,
+	}
+}
+
+func (ctx context) attachError(cause error, opts []Option) error {
+	if cause == nil {
+		return nil
+	}
+	if len(opts) == 0 {
+		return cause
+	}
+	ctx = ctx.clone()
+	ctx.applyOptions(opts)
+
+	type contextGetter interface {
+		getContext() *context
+	}
+
+	if getContext, ok := cause.(contextGetter); ok {
+		// the cause already has a context, so we can
+		// append to it
+		otherCtx := getContext.getContext()
+		otherCtx.mergeFrom(ctx)
+		return cause
+	}
+
+	// the cause does not have a context, so create an attach
+	// wrapper error
+	return &attachT{
+		context: ctx,
+		cause:   cause,
+	}
+}
+
+func (ctx context) appendKeyvals(keyvals []interface{}) []interface{} {
+	for _, kv := range ctx.pairs {
+		keyvals = append(keyvals, kv.key, kv.value)
+	}
+	if ctx.caller != "" {
+		keyvals = append(keyvals, "caller", ctx.caller)
+	}
+	return keyvals
+}
+
+func (ctx context) errorBuf(buf *bytes.Buffer) {
+	for _, kv := range ctx.pairs {
+		if buf.Len() > 0 {
+			buf.WriteRune(' ')
+		}
+		buf.WriteString(kv.key)
+		buf.WriteRune('=')
+		buf.WriteString(fmt.Sprintf("%v", kv.value))
+	}
+	if ctx.caller != "" {
+		if buf.Len() > 0 {
+			buf.WriteRune(' ')
+		}
+		buf.WriteString(ctx.caller)
 	}
 }

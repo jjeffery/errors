@@ -105,3 +105,61 @@ func TestCause(t *testing.T) {
 		}
 	}
 }
+
+func TestAttachNil(t *testing.T) {
+	got := Attach(nil, KV("no error", "no error"))
+	if got != nil {
+		t.Errorf("Attach(nil, \"no error\"): got %#v, expected nil", got)
+	}
+}
+
+func TestAttach(t *testing.T) {
+	tests := []struct {
+		cause         error
+		opts          []Option
+		expectedMsg   string
+		expectedCause error
+		expectedErr   error
+	}{
+		{
+			// this test case tests that when no options are passed, the
+			// original error is returned
+			cause:         io.EOF,
+			opts:          nil,
+			expectedMsg:   "EOF",
+			expectedCause: io.EOF,
+			expectedErr:   io.EOF,
+		},
+		{
+			cause:         io.EOF,
+			opts:          []Option{KV("k1", "v1"), KV("k2", "v2")},
+			expectedMsg:   "EOF k1=v1 k2=v2",
+			expectedCause: io.EOF,
+		},
+		{
+			cause:         Wrap(io.EOF, "something failed", KV("k3", "v3")),
+			opts:          []Option{KV("k1", "v1"), KV("k2", "v2")},
+			expectedMsg:   "something failed k3=v3 k1=v1 k2=v2: EOF",
+			expectedCause: io.EOF,
+		},
+	}
+
+	for i, tt := range tests {
+		err := Attach(tt.cause, tt.opts...)
+		actualMsg := err.Error()
+		if actualMsg != tt.expectedMsg {
+			t.Errorf("%d: expected=%q, actual=%q", i, tt.expectedMsg, actualMsg)
+		}
+		actualCause := Cause(err)
+		if actualCause != tt.expectedCause {
+			t.Errorf("%d: cause: expected=%v, actual=%v", i, tt.expectedCause, actualCause)
+		}
+
+		// only test if non-nil in the test case
+		if tt.expectedErr != nil {
+			if tt.expectedErr != err {
+				t.Errorf("%d: error: expected=%v, actual=%v", i, tt.expectedErr, err)
+			}
+		}
+	}
+}
