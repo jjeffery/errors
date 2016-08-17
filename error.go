@@ -75,12 +75,7 @@ func (e *errorT) errorBuf(buf *bytes.Buffer) {
 // as an array of alternating keys and values.
 func (e *errorT) Keyvals() []interface{} {
 	var keyvals []interface{}
-
-	if e.msg != "" {
-		keyvals = append(keyvals, "msg", e.msg)
-	} else {
-		keyvals = append(keyvals, "msg", "(no message)")
-	}
+	keyvals = append(keyvals, "msg", e.msg)
 	keyvals = e.appendKeyvals(keyvals)
 	return keyvals
 }
