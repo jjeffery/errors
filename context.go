@@ -43,6 +43,11 @@ func (ctx context) New(msg string, opts ...Option) error {
 }
 
 func (ctx context) Wrap(err error, msg string, opts ...Option) error {
+	if msg == "" {
+		// A wrap without a message just attaches the options
+		// to the error.
+		return ctx.attachError(err, opts)
+	}
 	return ctx.wrapError(err, msg, opts)
 }
 
