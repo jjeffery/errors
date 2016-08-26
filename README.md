@@ -15,6 +15,10 @@ Some of the ideas in this package [were proposed](https://github.com/pkg/errors/
 for package `github.com/pkg/errors`, but after a reasonable amount of consideration, were 
 ultimately not included in that package.
 
+> If you are not using structured logging in your application and have no intention
+of doing so, use the [github.com/pkg/errors](https://github.com/pkg/errors) package
+in preference to this one.
+
 ## Background
 
 The traditional error handling idiom in Go is roughly akin to
