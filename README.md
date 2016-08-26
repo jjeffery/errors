@@ -8,11 +8,11 @@ of this package is based on the excellent
 Please check out this package as it is more mature and has undergone more 
 testing and scrutiny. It may suit your purpose better.
 
-A key difference between this package and `github.com/pkg/errors` is that
+A key difference between this package and github.com/pkg/errors is that
 this package has been designed to suit programs that make use of 
 [structured logging](http://dev.splunk.com/view/logging-best-practices/SP-CAAADP6). 
 Some of the ideas in this package [were proposed](https://github.com/pkg/errors/issues/34) 
-for package `github.com/pkg/errors`, but after a reasonable amount of consideration, were 
+for package github.com/pkg/errors, but after a reasonable amount of consideration, were 
 ultimately not included in that package.
 
 > If you are not using structured logging in your application and have no intention
