@@ -5,8 +5,6 @@ Package `errorv` provides a simple error API that works well with structured log
 Many of the ideas, much of the code, and even the text for the documentation
 of this package is based on the excellent
 [github.com/pkg/errors](https://github.com/pkg/errors) package. 
-Please check out this package as it is more mature and has undergone more 
-testing and scrutiny. It may suit your purpose better.
 
 A key difference between this package and github.com/pkg/errors is that
 this package has been designed to suit programs that make use of 
