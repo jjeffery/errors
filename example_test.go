@@ -50,3 +50,55 @@ func doOneThing() (int, error) {
 func doAnotherThing(n int) error {
 	return nil
 }
+
+var NotFound error
+
+func ExampleAttach() error {
+	name := getNameOfThing()
+
+	if !thingExists(name) {
+		// 'NotFound' is a constant error defined globally.
+		return errorv.Attach(NotFound,
+			errorv.KV("name", name))
+	}
+
+	return doSomethingWithThing(name)
+}
+
+func getNameOfThing() string {
+	return ""
+}
+
+func thingExists(name string) bool {
+	return false
+}
+
+func doSomethingWithThing(name string) error {
+	return nil
+}
+
+func isValidName(name string) bool {
+	return false
+}
+
+func ExampleNew() error {
+	name := getNameOfThing()
+
+	if !isValidName(name) {
+		return errorv.New("invalid name",
+			errorv.KV("name", name))
+	}
+}
+
+func ExampleCause(err error) bool {
+	// tests if an error is a not found error
+	type notFounder interface {
+		NotFound() bool
+	}
+
+	if notFound, ok := errorv.Cause(err).(notFounder); ok {
+		return notFound.Notfound()
+	}
+
+	return false
+}
