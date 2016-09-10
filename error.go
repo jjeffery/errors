@@ -2,25 +2,22 @@ package errorv
 
 import (
 	"bytes"
+	"fmt"
 )
 
+var _ = fmt.Printf
+
 // New creates a new error.
-func New(msg string, opts ...Option) error {
+func New(msg string, keyvals ...interface{}) error {
 	var ctx context
-	return ctx.newError(msg, opts)
+	return ctx.newError(msg, keyvals)
 }
 
-// Wrap creates an error that wraps an existing error, optionally providing additional information.
-// If err is nil, Wrap returns nil.
-func Wrap(err error, msg string, opts ...Option) error {
+// Wrap creates an error that wraps an existing error, optionally providing
+// additional information. If err is nil, Wrap returns nil.
+func Wrap(err error, msg string, keyvals ...interface{}) error {
 	var ctx context
-	return ctx.wrapError(err, msg, opts)
-}
-
-// Attach attaches additional context to an existing error.
-func Attach(err error, opts ...Option) error {
-	var ctx context
-	return ctx.attachError(err, opts)
+	return ctx.wrapError(err, msg, keyvals)
 }
 
 // Cause was copied from https://github.com/pkg/errors
@@ -37,6 +34,9 @@ func Attach(err error, opts ...Option) error {
 // If the error does not implement Cause, the original error will
 // be returned. If the error is nil, nil will be returned without further
 // investigation.
+//
+// Cause is compatible with the Cause function in package "github.com/pkg/errors".
+// The implementation and documentation of Cause has been copied from that package.
 func Cause(err error) error {
 	type causer interface {
 		Cause() error
@@ -60,15 +60,9 @@ type errorT struct {
 // Error implements the error interface.
 func (e *errorT) Error() string {
 	var buf bytes.Buffer
-	e.errorBuf(&buf)
-	return buf.String()
-}
-
-// errorBuf fills a buffer with text for an error message.
-// Shared with causeT Error implementation.
-func (e *errorT) errorBuf(buf *bytes.Buffer) {
 	buf.WriteString(e.msg)
-	e.context.errorBuf(buf)
+	e.context.errorBuf(&buf)
+	return buf.String()
 }
 
 // Keyvals returns the contents of the error
@@ -93,9 +87,9 @@ type causeT struct {
 // Error implements the error interface.
 func (c *causeT) Error() string {
 	var buf bytes.Buffer
-	c.errorBuf(&buf)
-	buf.WriteRune(':')
-	buf.WriteRune(' ')
+	buf.WriteString(c.msg)
+	c.context.errorBuf(&buf)
+	buf.WriteString(": ")
 	buf.WriteString(c.cause.Error())
 	return buf.String()
 }
@@ -127,7 +121,8 @@ type attachT struct {
 // Error implements the error interface.
 func (a *attachT) Error() string {
 	var buf bytes.Buffer
-	a.errorBuf(&buf)
+	buf.WriteString(a.cause.Error())
+	a.context.errorBuf(&buf)
 	return buf.String()
 }
 
@@ -135,13 +130,6 @@ func (a *attachT) Error() string {
 // the github.com/pkg/errors package.
 func (a *attachT) Cause() error {
 	return a.cause
-}
-
-// errorBuf fills a buffer with text for an error message.
-// Shared with causeT Error implementation.
-func (a *attachT) errorBuf(buf *bytes.Buffer) {
-	buf.WriteString(a.cause.Error())
-	a.context.errorBuf(buf)
 }
 
 // Keyvals returns the contents of the error

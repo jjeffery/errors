@@ -8,26 +8,26 @@ import (
 
 func Example() {
 	err := errorv.New("first error",
-		errorv.KV("card", "ace"),
-		errorv.KV("suite", "spades"))
+		"card", "ace",
+		"suite", "spades")
 	fmt.Println(err)
 
 	err = errorv.Wrap(err, "second error",
-		errorv.KV("piece", "rook"),
-		errorv.KV("color", "black"),
-		errorv.Caller(0))
+		"piece", "rook",
+		"color", "black",
+	)
 	fmt.Println(err)
 
 	// Output:
 	// first error card=ace suite=spades
-	// second error piece=rook color=black github.com/jjeffery/errorv/example_test.go:18: first error card=ace suite=spades
+	// second error piece=rook color=black: first error card=ace suite=spades
 }
 
 var userID, documentID string
 
 func ExampleContext() error {
 	// ... if a function has been called with userID and DocumentID ...
-	errorv := errorv.NewContext(errorv.KV("userID", userID), errorv.KV("documentID", documentID))
+	errorv := errorv.NewContext("userID", userID, "documentID", documentID)
 
 	n, err := doOneThing()
 	if err != nil {
@@ -37,7 +37,7 @@ func ExampleContext() error {
 
 	if err := doAnotherThing(n); err != nil {
 		// will include key value pairs for userID, document ID and n
-		return errorv.Wrap(err, "cannot do another thing", errorv.KV("n", n))
+		return errorv.Wrap(err, "cannot do another thing", "n", n)
 	}
 
 	return nil
@@ -52,18 +52,6 @@ func doAnotherThing(n int) error {
 }
 
 var NotFound error
-
-func ExampleAttach() error {
-	name := getNameOfThing()
-
-	if !thingExists(name) {
-		// 'NotFound' is a constant error defined globally.
-		return errorv.Attach(NotFound,
-			errorv.KV("name", name))
-	}
-
-	return doSomethingWithThing(name)
-}
 
 func getNameOfThing() string {
 	return ""
@@ -85,9 +73,9 @@ func ExampleNew() error {
 	name := getNameOfThing()
 
 	if !isValidName(name) {
-		return errorv.New("invalid name",
-			errorv.KV("name", name))
+		return errorv.New("invalid name", "name", name)
 	}
+	return nil
 }
 
 func ExampleCause(err error) bool {
@@ -97,7 +85,7 @@ func ExampleCause(err error) bool {
 	}
 
 	if notFound, ok := errorv.Cause(err).(notFounder); ok {
-		return notFound.Notfound()
+		return notFound.NotFound()
 	}
 
 	return false

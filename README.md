@@ -2,6 +2,11 @@
 
 Package `errorv` provides a simple error API that works well with structured logging.
 
+- [Background](#background)
+- [Adding context to an error](#adding-context-to-an-error)
+- [Retrieving the cause of an error](#retrieving-the-cause-of-an-error)
+- [Retrieving key value pairs for structured logging](#retrieving-key-value-pairs-for-structured-logging)
+
 Many of the ideas, much of the code, and even the text for the documentation
 of this package is based on the excellent
 [github.com/pkg/errors](https://github.com/pkg/errors) package. 
@@ -33,33 +38,15 @@ The [`errorv.Wrap`](https://godoc.org/github.com/jjeffery/errorv#Wrap) function
 returns a new error that adds context to the original error. For example
 ```go
 name := "some-file"
-err := doSomethingWith(name)
+number := 53
+err := doSomethingWith(name, number)
 if err != nil {
-        return errorv.Wrap(err, "cannot do something",
-		        errorv.KV("name", name))
+    return errorv.Wrap(err, "cannot do something", 
+        "name", name,
+        "number", number,
+    )
 }
 ```
-
-Adding context to an error with the `errorv.Wrap` function involves attaching
-a message and any number of key value pairs. There are alternatives for attaching
-key value pairs to a message, depending on the convenience and preferences of
-the caller:
-
-```go
-return errorv.Wrap(err, "message for wrapped error",
-        errorv.KV("key1", value1),
-		errorv.KV("key2", value2),
-		errorv.KV("key3", value3))
-```
-can also be expressed as:
-```go
-return errorv.Wrap(err, "message for wrapped error", errorv.Keyvals{
-	    "key1", value1,
-		"key2", value2,
-		"key3", value3,
-})
-```
-The first way is a bit more verbose, but has stronger type checks.
 
 ## Retrieving the cause of an error
 
@@ -73,15 +60,15 @@ type causer interface {
 ```go
 switch err := errorv.Cause(err).(type) {
 case *MyError:
-        // handle specifically
+    // handle specifically
 default:
-        // unknown error
+    // unknown error
 }
 ```
 
-## Retrieving the error for structured logging
+## Retrieving key value pairs for structured logging
 
-Errors created by `errorv.Wrap` implement the following interface.
+Errors created by `errorv.Wrap` and `errorv.New` implement the following interface.
 ```go
 type keyvalser interface {
 	Keyvals() []interface{}
@@ -118,9 +105,13 @@ func logError(logger log.Logger, err error) {
 }
 ```
 
+This interface works well with the 
+[github.com/jjeffery/kv](https://github.com/jjeffery/kv) package, which
+provides improved type safety and clarity when working with key value pairs.
+
 > **GOOD ADVICE:** Do not use the `Keyvals` method on an error to retrieve the
 individual key/value pairs associated with an error for processing by the
-calling program.
+calling program. 
 
 [Read the package documentation for more information](https://godoc.org/github.com/jjeffery/errorv).
 

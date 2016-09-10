@@ -10,7 +10,7 @@ import (
 func TestNew(t *testing.T) {
 	tests := []struct {
 		msg    string
-		opts   []Option
+		opts   []interface{}
 		expect string
 	}{
 		{
@@ -25,27 +25,18 @@ func TestNew(t *testing.T) {
 		},
 		{
 			msg: "xx",
-			opts: []Option{
-				KV("key1", "val1"),
-				KV("key2", 2),
+			opts: []interface{}{
+				"key1", "val1",
+				"key2", 2,
 			},
 			expect: "xx key1=val1 key2=2",
 		},
 		{
 			msg: "msg",
-			opts: []Option{
-				KV("key", time.Time{}),
+			opts: []interface{}{
+				"key", time.Time{},
 			},
 			expect: "msg key=0001-01-01 00:00:00 +0000 UTC",
-		},
-		{
-			msg: "msg",
-			opts: []Option{
-				Caller(0),
-			},
-			// WARNING: this test is pretty brittle: if you move
-			// any lines in this file you will have to change expect.
-			expect: "msg github.com/jjeffery/errorv/errorv_test.go:53",
 		},
 	}
 
@@ -107,7 +98,7 @@ func TestCause(t *testing.T) {
 }
 
 func TestAttachNil(t *testing.T) {
-	got := Attach(nil, KV("no error", "no error"))
+	got := Wrap(nil, "", "no error", "no error")
 	if got != nil {
 		t.Errorf("Attach(nil, \"no error\"): got %#v, expected nil", got)
 	}
@@ -116,7 +107,7 @@ func TestAttachNil(t *testing.T) {
 func TestAttach(t *testing.T) {
 	tests := []struct {
 		cause         error
-		opts          []Option
+		opts          []interface{}
 		expectedMsg   string
 		expectedCause error
 		expectedErr   error
@@ -132,20 +123,20 @@ func TestAttach(t *testing.T) {
 		},
 		{
 			cause:         io.EOF,
-			opts:          []Option{KV("k1", "v1"), KV("k2", "v2")},
+			opts:          []interface{}{"k1", "v1", "k2", "v2"},
 			expectedMsg:   "EOF k1=v1 k2=v2",
 			expectedCause: io.EOF,
 		},
 		{
-			cause:         Wrap(io.EOF, "something failed", KV("k3", "v3")),
-			opts:          []Option{KV("k1", "v1"), KV("k2", "v2")},
+			cause:         Wrap(io.EOF, "something failed", "k3", "v3"),
+			opts:          []interface{}{"k1", "v1", "k2", "v2"},
 			expectedMsg:   "something failed k3=v3 k1=v1 k2=v2: EOF",
 			expectedCause: io.EOF,
 		},
 	}
 
 	for i, tt := range tests {
-		err := Attach(tt.cause, tt.opts...)
+		err := Wrap(tt.cause, "", tt.opts...)
 		actualMsg := err.Error()
 		if actualMsg != tt.expectedMsg {
 			t.Errorf("%d: expected=%q, actual=%q", i, tt.expectedMsg, actualMsg)
@@ -174,15 +165,15 @@ func TestKeyvals(t *testing.T) {
 			keyvals: []interface{}{"msg", "message"},
 		},
 		{
-			err:     New("message", KV("k1", "v1"), KV("k2", 2)),
+			err:     New("message", "k1", "v1", "k2", 2),
 			keyvals: []interface{}{"msg", "message", "k1", "v1", "k2", 2},
 		},
 		{
-			err:     Wrap(io.EOF, "message", KV("k1", "v1"), KV("k2", 2)),
+			err:     Wrap(io.EOF, "message", "k1", "v1", "k2", 2),
 			keyvals: []interface{}{"msg", "message", "k1", "v1", "k2", 2, "cause", "EOF"},
 		},
 		{
-			err:     Attach(io.EOF, KV("k1", "v1"), KV("k2", 2)),
+			err:     Wrap(io.EOF, "", "k1", "v1", "k2", 2),
 			keyvals: []interface{}{"msg", "EOF", "k1", "v1", "k2", 2},
 		},
 	}
