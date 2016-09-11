@@ -94,7 +94,7 @@ func (c *causeT) Error() string {
 	return buf.String()
 }
 
-// Cause implements the causer interface, for compatiblity with
+// Cause implements the causer interface, for compatibility with
 // the github.com/pkg/errors package.
 func (c *causeT) Cause() error {
 	return c.cause
@@ -126,7 +126,7 @@ func (a *attachT) Error() string {
 	return buf.String()
 }
 
-// Cause implements the causer interface, for compatiblity with
+// Cause implements the causer interface, for compatibility with
 // the github.com/pkg/errors package.
 func (a *attachT) Cause() error {
 	return a.cause
