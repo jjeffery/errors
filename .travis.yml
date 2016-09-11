@@ -5,6 +5,7 @@ go:
   - 1.5
 
 install:
+  - go get github.com/jjeffery/kv
   - go get golang.org/x/tools/cmd/cover
   - go get github.com/mattn/goveralls
 
