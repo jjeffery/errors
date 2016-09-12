@@ -65,6 +65,11 @@ func (e *errorT) Error() string {
 	return buf.String()
 }
 
+// MarshalText implements the TextMarshaler interface.
+func (e *errorT) MarshalText() ([]byte, error) {
+	return []byte(e.Error()), nil
+}
+
 // Keyvals returns the contents of the error
 // as an array of alternating keys and values.
 func (e *errorT) Keyvals() []interface{} {
@@ -92,6 +97,11 @@ func (c *causeT) Error() string {
 	buf.WriteString(": ")
 	buf.WriteString(c.cause.Error())
 	return buf.String()
+}
+
+// MarshalText implements the TextMarshaler interface.
+func (c *causeT) MarshalText() ([]byte, error) {
+	return []byte(c.Error()), nil
 }
 
 // Cause implements the causer interface, for compatibility with
@@ -124,6 +134,11 @@ func (a *attachT) Error() string {
 	buf.WriteString(a.cause.Error())
 	a.context.errorBuf(&buf)
 	return buf.String()
+}
+
+// MarshalText implements the TextMarshaler interface.
+func (a *attachT) MarshalText() ([]byte, error) {
+	return []byte(a.Error()), nil
 }
 
 // Cause implements the causer interface, for compatibility with
