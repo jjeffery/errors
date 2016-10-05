@@ -1,6 +1,7 @@
 package errors
 
 import (
+	"encoding"
 	"io"
 	"reflect"
 	"testing"
@@ -191,6 +192,49 @@ func TestKeyvals(t *testing.T) {
 		kvs := keyvals.Keyvals()
 		if !reflect.DeepEqual(tt.keyvals, kvs) {
 			t.Errorf("%d: expected %v, actual %v", i, tt.keyvals, kvs)
+		}
+	}
+}
+
+func TestMarshalText(t *testing.T) {
+	tests := []struct {
+		err  error
+		text string
+	}{
+		{
+			err:  New("error message"),
+			text: "error message",
+		},
+		{
+			err:  Wrap(io.EOF, "error message"),
+			text: "error message: EOF",
+		},
+		{
+			err:  Wrap(io.EOF, ""),
+			text: "EOF",
+		},
+		{
+			err:  New("error message").With("a", 1),
+			text: "error message a=1",
+		},
+		{
+			err:  Wrap(io.EOF, "error message").With("b2", "b2"),
+			text: "error message b2=b2: EOF",
+		},
+		{
+			err:  Wrap(io.EOF, "").With("c3", 3),
+			text: "EOF c3=3",
+		},
+	}
+	for i, tt := range tests {
+		m := tt.err.(encoding.TextMarshaler)
+		b, err := m.MarshalText()
+		if err != nil {
+			t.Errorf("%d: want no error, got %v", i, err)
+			continue
+		}
+		if want, got := tt.text, string(b); want != got {
+			t.Errorf("%d: want %q, got %q", i, want, got)
 		}
 	}
 }
