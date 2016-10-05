@@ -1,5 +1,5 @@
 /*
-Package errorv provides a simple error API that works well with structured logging.
+Package errors provides a simple error API that works well with structured logging.
 
 Many of the ideas, much of the code, and even the text for the documentation
 of this package is based on the excellent
@@ -23,19 +23,19 @@ The traditional error handling idiom in Go is roughly akin to
      return err
  }
 which applied recursively up the call stack results in error reports without
-context or debugging information. The errorv package allows programmers to
+context or debugging information. The errors package allows programmers to
 add context to the failure path in their code in a way that does not destroy
 the original value of the error.
 
 Adding context to an error
 
-The errorv.Wrap function returns a new error that adds context to the
+The errors.Wrap function returns a new error that adds context to the
 original error. For example
  name := "some-file"
  number := 53
  err := doSomethingWith(name, number)
  if err != nil {
-     return errorv.Wrap(err, "cannot do something",
+     return errors.Wrap(err, "cannot do something").With(
          "name", name,
          "number", number,
      )
@@ -43,19 +43,19 @@ original error. For example
 
 Retrieving the cause of an error
 
-Using errorv.Wrap constructs a stack of errors, adding context to the
+Using errors.Wrap constructs a stack of errors, adding context to the
 preceding error. Depending on the nature of the error it may be necessary
-to reverse the operation of errorv.Wrap to retrieve the original error for
+to reverse the operation of errors.Wrap to retrieve the original error for
 inspection. Any error value which implements this interface can be inspected
-by errorv.Cause.
+by errors.Cause.
 
  type causer interface {
      Cause() error
  }
-errorv.Cause will recursively retrieve the topmost error which does not
+errors.Cause will recursively retrieve the topmost error which does not
 implement causer, which is assumed to be the original cause. For example:
 
- switch err := errorv.Cause(err).(type) {
+ switch err := errors.Cause(err).(type) {
  case *MyError:
      // handle specifically
  default:
@@ -64,7 +64,7 @@ implement causer, which is assumed to be the original cause. For example:
 
 Retrieving key value pairs for structured logging
 
-Errors created by `errorv.Wrap` and `errorv.New` implement the following
+Errors created by `errors.Wrap` and `errors.New` implement the following
 interface:
 
  type keyvalser interface {
@@ -107,4 +107,17 @@ GOOD ADVICE: Do not use the `Keyvals` method on an error to retrieve the
 individual key/value pairs associated with an error for processing by the
 calling program.
 */
-package errorv
+package errors
+
+// BUG(jpj): This package makes use of a fluent API for attaching key/value
+// pairs to an error. Dave Cheney has written up some good reasons to avoid
+// this approach: see https://github.com/pkg/errors/issues/15#issuecomment-221194128.
+// Experience will show if this presents a problem.
+
+// BUG(jpj): Attaching key/value pairs to an error was considered for package
+// github.com/pkg/errors, but in the end it was not implemented because
+// of the potential for abusing the information in the error. See Dave Cheney's
+// comment at https://github.com/pkg/errors/issues/34#issuecomment-228231192.
+// This package has used the `keyvalser` interface as a mechanism for extracting
+// key/value pairs from an error. In practice this seems to work quite well, but
+// it is possible to write code that extracts information from the error.

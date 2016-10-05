@@ -1,6 +1,6 @@
-# errorv [![GoDoc](https://godoc.org/github.com/jjeffery/errorv?status.svg)](https://godoc.org/github.com/jjeffery/errorv) [![License](http://img.shields.io/badge/license-MIT-green.svg?style=flat)](https://raw.githubusercontent.com/jjeffery/errorv/master/LICENSE.md) [![Build Status](https://travis-ci.org/jjeffery/errorv.svg?branch=master)](https://travis-ci.org/jjeffery/errorv) [![Coverage Status](https://coveralls.io/repos/github/jjeffery/errorv/badge.svg?branch=master)](https://coveralls.io/github/jjeffery/errorv?branch=master) [![GoReportCard](https://goreportcard.com/badge/github.com/jjeffery/errorv)](https://goreportcard.com/report/github.com/jjeffery/errorv)
+# errors [![GoDoc](https://godoc.org/github.com/jjeffery/errors?status.svg)](https://godoc.org/github.com/jjeffery/errors) [![License](http://img.shields.io/badge/license-MIT-green.svg?style=flat)](https://raw.githubusercontent.com/jjeffery/errors/master/LICENSE.md) [![Build Status](https://travis-ci.org/jjeffery/errors.svg?branch=master)](https://travis-ci.org/jjeffery/errors) [![Coverage Status](https://coveralls.io/repos/github/jjeffery/errors/badge.svg?branch=master)](https://coveralls.io/github/jjeffery/errors?branch=master) [![GoReportCard](https://goreportcard.com/badge/github.com/jjeffery/errors)](https://goreportcard.com/report/github.com/jjeffery/errors)
 
-Package `errorv` provides a simple error API that works well with structured logging.
+Package `errors` provides a simple error API that works well with structured logging.
 
 - [Background](#background)
 - [Adding context to an error](#adding-context-to-an-error)
@@ -30,18 +30,18 @@ if err != nil {
         return err
 }
 ```
-which applied recursively up the call stack results in error reports without context or debugging information. The `errorv` package allows programmers to add context to the failure path in their code in a way that does not destroy the original value of the error.
+which applied recursively up the call stack results in error reports without context or debugging information. The `errors` package allows programmers to add context to the failure path in their code in a way that does not destroy the original value of the error.
 
 ## Adding context to an error
 
-The [`errorv.Wrap`](https://godoc.org/github.com/jjeffery/errorv#Wrap) function 
+The [`errors.Wrap`](https://godoc.org/github.com/jjeffery/errors#Wrap) function 
 returns a new error that adds context to the original error. For example
 ```go
 name := "some-file"
 number := 53
 err := doSomethingWith(name, number)
 if err != nil {
-    return errorv.Wrap(err, "cannot do something", 
+    return errors.Wrap(err, "cannot do something").With( 
         "name", name,
         "number", number,
     )
@@ -50,15 +50,15 @@ if err != nil {
 
 ## Retrieving the cause of an error
 
-Using `errorv.Wrap` constructs a stack of errors, adding context to the preceding error. Depending on the nature of the error it may be necessary to reverse the operation of `errorv.Wrap` to retrieve the original error for inspection. Any error value which implements this interface can be inspected by [`errorv.Cause`](https://godoc.org/github.com/jjeffery/errorv#Cause).
+Using `errors.Wrap` constructs a stack of errors, adding context to the preceding error. Depending on the nature of the error it may be necessary to reverse the operation of `errors.Wrap` to retrieve the original error for inspection. Any error value which implements this interface can be inspected by [`errors.Cause`](https://godoc.org/github.com/jjeffery/errors#Cause).
 ```go
 type causer interface {
         Cause() error
 }
 ```
-`errorv.Cause` will recursively retrieve the topmost error which does not implement `causer`, which is assumed to be the original cause. For example:
+`errors.Cause` will recursively retrieve the topmost error which does not implement `causer`, which is assumed to be the original cause. For example:
 ```go
-switch err := errorv.Cause(err).(type) {
+switch err := errors.Cause(err).(type) {
 case *MyError:
     // handle specifically
 default:
@@ -68,7 +68,7 @@ default:
 
 ## Retrieving key value pairs for structured logging
 
-Errors created by `errorv.Wrap` and `errorv.New` implement the following interface.
+Errors created by `errors.Wrap` and `errors.New` implement the following interface.
 ```go
 type keyvalser interface {
 	Keyvals() []interface{}
@@ -113,7 +113,7 @@ provides improved type safety and clarity when working with key value pairs.
 individual key/value pairs associated with an error for processing by the
 calling program. 
 
-[Read the package documentation for more information](https://godoc.org/github.com/jjeffery/errorv).
+[Read the package documentation for more information](https://godoc.org/github.com/jjeffery/errors).
 
 ## Licence
 

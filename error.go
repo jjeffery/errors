@@ -1,4 +1,4 @@
-package errorv
+package errors
 
 import (
 	"bytes"
@@ -7,53 +7,8 @@ import (
 
 var _ = fmt.Printf
 
-// New creates a new error.
-func New(msg string, keyvals ...interface{}) error {
-	var ctx context
-	return ctx.newError(msg, keyvals)
-}
-
-// Wrap creates an error that wraps an existing error, optionally providing
-// additional information. If err is nil, Wrap returns nil.
-func Wrap(err error, msg string, keyvals ...interface{}) error {
-	var ctx context
-	return ctx.wrapError(err, msg, keyvals)
-}
-
-// Cause was copied from https://github.com/pkg/errors
-// for compatibility.
-
-// Cause returns the underlying cause of the error, if possible.
-// An error value has a cause if it implements the following
-// interface:
-//
-//     type causer interface {
-//            Cause() error
-//     }
-//
-// If the error does not implement Cause, the original error will
-// be returned. If the error is nil, nil will be returned without further
-// investigation.
-//
-// Cause is compatible with the Cause function in package "github.com/pkg/errors".
-// The implementation and documentation of Cause has been copied from that package.
-func Cause(err error) error {
-	type causer interface {
-		Cause() error
-	}
-
-	for err != nil {
-		cause, ok := err.(causer)
-		if !ok {
-			break
-		}
-		err = cause.Cause()
-	}
-	return err
-}
-
 type errorT struct {
-	context
+	ctx context
 	msg string
 }
 
@@ -61,8 +16,12 @@ type errorT struct {
 func (e *errorT) Error() string {
 	var buf bytes.Buffer
 	buf.WriteString(e.msg)
-	e.context.errorBuf(&buf)
+	e.ctx.errorBuf(&buf)
 	return buf.String()
+}
+
+func (e *errorT) With(keyvals ...interface{}) Error {
+	return e.withKeyvals(keyvals)
 }
 
 // MarshalText implements the TextMarshaler interface.
@@ -75,17 +34,19 @@ func (e *errorT) MarshalText() ([]byte, error) {
 func (e *errorT) Keyvals() []interface{} {
 	var keyvals []interface{}
 	keyvals = append(keyvals, "msg", e.msg)
-	keyvals = e.appendKeyvals(keyvals)
+	keyvals = e.ctx.appendKeyvals(keyvals)
 	return keyvals
 }
 
-// getContext implements contextGetter interface
-func (e *errorT) getContext() *context {
-	return &e.context
+func (e *errorT) withKeyvals(keyvals []interface{}) *errorT {
+	return &errorT{
+		ctx: e.ctx.withKeyvals(keyvals),
+		msg: e.msg,
+	}
 }
 
 type causeT struct {
-	errorT
+	*errorT
 	cause error
 }
 
@@ -93,10 +54,17 @@ type causeT struct {
 func (c *causeT) Error() string {
 	var buf bytes.Buffer
 	buf.WriteString(c.msg)
-	c.context.errorBuf(&buf)
+	c.ctx.errorBuf(&buf)
 	buf.WriteString(": ")
 	buf.WriteString(c.cause.Error())
 	return buf.String()
+}
+
+func (c *causeT) With(keyvals ...interface{}) Error {
+	return &causeT{
+		errorT: c.errorT.withKeyvals(keyvals),
+		cause:  c.cause,
+	}
 }
 
 // MarshalText implements the TextMarshaler interface.
@@ -114,17 +82,15 @@ func (c *causeT) Cause() error {
 // as an array of alternating keys and values.
 func (c *causeT) Keyvals() []interface{} {
 	keyvals := c.errorT.Keyvals()
+
+	// TODO(jpj): this might be improved by checking if cause
+	// implements keyvalser, and appending keyvals.
 	keyvals = append(keyvals, "cause", c.cause.Error())
 	return keyvals
 }
 
-// getContext implements contextGetter interface
-func (c *causeT) getContext() *context {
-	return &c.context
-}
-
 type attachT struct {
-	context
+	ctx   context
 	cause error
 }
 
@@ -132,8 +98,15 @@ type attachT struct {
 func (a *attachT) Error() string {
 	var buf bytes.Buffer
 	buf.WriteString(a.cause.Error())
-	a.context.errorBuf(&buf)
+	a.ctx.errorBuf(&buf)
 	return buf.String()
+}
+
+func (a *attachT) With(keyvals ...interface{}) Error {
+	return &attachT{
+		ctx:   a.ctx.withKeyvals(keyvals),
+		cause: a.cause,
+	}
 }
 
 // MarshalText implements the TextMarshaler interface.
@@ -151,12 +124,9 @@ func (a *attachT) Cause() error {
 // as an array of alternating keys and values.
 func (a *attachT) Keyvals() []interface{} {
 	var keyvals []interface{}
+	// TODO(jpj): this could be improved by checking if the
+	// cause implements the keyvalser interface.
 	keyvals = append(keyvals, "msg", a.cause.Error())
-	keyvals = a.appendKeyvals(keyvals)
+	keyvals = a.ctx.appendKeyvals(keyvals)
 	return keyvals
-}
-
-// getContext implements contextGetter interface
-func (a *attachT) getContext() *context {
-	return &a.context
 }

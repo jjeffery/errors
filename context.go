@@ -1,4 +1,4 @@
-package errorv
+package errors
 
 import (
 	"bytes"
@@ -7,115 +7,84 @@ import (
 	"github.com/jjeffery/kv"
 )
 
-// A Context can be useful for specifying common key/value pairs that will
-// be attached to all error messages created from that context.
-type Context interface {
-	New(msg string, keyvals ...interface{}) error
-	Wrap(err error, msg string, keyvals ...interface{}) error
-	NewContext(keyvals ...interface{}) Context
-}
-
-// NewContext creates a new error context with information that will be
-// associated with any errors created from that context.
-func NewContext(keyvals ...interface{}) Context {
-	var ctx context
-	ctx.keyvals = append(ctx.keyvals, keyvals...)
-	return ctx
-}
-
 // A context implements the public Context interface.
 type context struct {
 	keyvals []interface{}
 }
 
-func (ctx context) New(msg string, keyvals ...interface{}) error {
-	return ctx.newError(msg, keyvals)
+func (ctx context) New(msg string) Error {
+	return ctx.newError(msg)
 }
 
-func (ctx context) Wrap(err error, msg string, keyvals ...interface{}) error {
+func (ctx context) Wrap(err error, msg string) Error {
+	if err == nil {
+		return nil
+	}
 	if msg == "" {
 		// A wrap without a message just attaches the options
 		// to the error.
-		return ctx.attachError(err, keyvals)
+		return ctx.attachError(err)
 	}
-	return ctx.wrapError(err, msg, keyvals)
+	return ctx.wrapError(err, msg)
 }
 
-func (ctx context) NewContext(keyvals ...interface{}) Context {
-	ctx2 := ctx.clone()
-	ctx.keyvals = append(ctx.keyvals, keyvals...)
-	return ctx2
+func (ctx context) With(keyvals ...interface{}) Context {
+	return ctx.withKeyvals(keyvals)
+}
+
+// safeSlice returns a slice whose capacity is the same as its length.
+// This slice is safe for concurrent operations because any attempt to
+// append to the slice will result in a new underlying array being allocated.
+func safeSlice(keyvals []interface{}) []interface{} {
+	if len(keyvals) == 0 {
+		return nil
+	}
+	return keyvals[0:len(keyvals):len(keyvals)]
 }
 
 // clone creates a deep copy of the context.
 func (ctx context) clone() context {
-	ctx2 := context{}
-	if len(ctx.keyvals) > 0 {
-		// set the capacity of the slice to ensure that any
-		// append will allocate a new underlying array
-		ctx2.keyvals = ctx.keyvals[0:len(ctx.keyvals):len(ctx.keyvals)]
+	return context{
+		keyvals: safeSlice(ctx.keyvals),
 	}
-	return ctx2
 }
 
-func (ctx *context) mergeFrom(other context) {
-	ctx.keyvals = append(ctx.keyvals, other.keyvals...)
-}
-
-func (ctx context) newError(msg string, keyvals []interface{}) error {
+func (ctx context) withKeyvals(keyvals []interface{}) context {
 	ctx = ctx.clone()
 	ctx.keyvals = append(ctx.keyvals, keyvals...)
+	return ctx
+}
+
+func (ctx context) newError(msg string) *errorT {
+	ctx = ctx.clone()
 	return &errorT{
-		context: ctx,
-		msg:     msg,
+		ctx: ctx,
+		msg: msg,
 	}
 }
 
-func (ctx context) wrapError(cause error, msg string, keyvals []interface{}) error {
-	if cause == nil {
-		return nil
-	}
-	if msg == "" {
-		return ctx.attachError(cause, keyvals)
-	}
+func (ctx context) wrapError(cause error, msg string) *causeT {
 	ctx = ctx.clone()
-	ctx.keyvals = append(ctx.keyvals, keyvals...)
 	return &causeT{
-		errorT: errorT{
-			msg:     msg,
-			context: ctx,
+		errorT: &errorT{
+			msg: msg,
+			ctx: ctx,
 		},
 		cause: cause,
 	}
 }
 
-func (ctx context) attachError(cause error, keyvals []interface{}) error {
-	if cause == nil {
-		return nil
-	}
-	if len(keyvals) == 0 {
-		return cause
+func (ctx context) attachError(cause error) Error {
+	if err, ok := cause.(Error); ok {
+		return err
 	}
 	ctx = ctx.clone()
-	ctx.keyvals = append(ctx.keyvals, keyvals...)
-
-	type contextGetter interface {
-		getContext() *context
-	}
-
-	if getContext, ok := cause.(contextGetter); ok {
-		// the cause already has a context, so we can
-		// append to it
-		otherCtx := getContext.getContext()
-		otherCtx.mergeFrom(ctx)
-		return cause
-	}
 
 	// the cause does not have a context, so create an attach
 	// wrapper error
 	return &attachT{
-		context: ctx,
-		cause:   cause,
+		ctx:   ctx,
+		cause: cause,
 	}
 }
 

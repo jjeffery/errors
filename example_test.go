@@ -1,18 +1,19 @@
-package errorv_test
+package errors_test
 
 import (
 	"fmt"
 
-	"github.com/jjeffery/errorv"
+	"github.com/jjeffery/errors"
 )
 
 func Example() {
-	err := errorv.New("first error",
+	err := errors.New("first error").With(
 		"card", "ace",
-		"suite", "spades")
+		"suite", "spades",
+	)
 	fmt.Println(err)
 
-	err = errorv.Wrap(err, "second error",
+	err = errors.Wrap(err, "second error").With(
 		"piece", "rook",
 		"color", "black",
 	)
@@ -28,17 +29,17 @@ var documentID = "d1"
 
 func ExampleContext() {
 	// ... if a function has been called with userID and DocumentID ...
-	errorv := errorv.NewContext("userID", userID, "documentID", documentID)
+	errors := errors.With("userID", userID, "documentID", documentID)
 
 	n, err := doOneThing()
 	if err != nil {
 		// will include key value pairs for userID and document ID
-		fmt.Println(errorv.Wrap(err, "cannot do one thing"))
+		fmt.Println(errors.Wrap(err, "cannot do one thing"))
 	}
 
 	if err := doAnotherThing(n); err != nil {
 		// will include key value pairs for userID, document ID and n
-		fmt.Println(errorv.Wrap(err, "cannot do another thing", "n", n))
+		fmt.Println(errors.Wrap(err, "cannot do another thing").With("n", n))
 	}
 
 	// Output:
@@ -76,7 +77,7 @@ func ExampleNew() {
 	name := getNameOfThing()
 
 	if !isValidName(name) {
-		fmt.Println(errorv.New("invalid name", "name", name))
+		fmt.Println(errors.New("invalid name").With("name", name))
 	}
 	// Output:
 	// invalid name name=!not-valid
@@ -90,7 +91,7 @@ func ExampleCause() {
 
 	err := getError()
 
-	if notFound, ok := errorv.Cause(err).(notFounder); ok {
+	if notFound, ok := errors.Cause(err).(notFounder); ok {
 		fmt.Printf("Not found: %v", notFound.NotFound())
 	}
 }

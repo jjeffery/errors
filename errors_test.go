@@ -1,4 +1,4 @@
-package errorv
+package errors
 
 import (
 	"io"
@@ -41,7 +41,7 @@ func TestNew(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got := New(tt.msg, tt.opts...)
+		got := New(tt.msg).With(tt.opts...)
 		if got.Error() != tt.expect {
 			t.Errorf("New.Error(): got: %q, want %q", got, tt.expect)
 		}
@@ -98,7 +98,7 @@ func TestCause(t *testing.T) {
 }
 
 func TestAttachNil(t *testing.T) {
-	got := Wrap(nil, "", "no error", "no error")
+	got := Wrap(nil, "")
 	if got != nil {
 		t.Errorf("Attach(nil, \"no error\"): got %#v, expected nil", got)
 	}
@@ -128,7 +128,7 @@ func TestAttach(t *testing.T) {
 			expectedCause: io.EOF,
 		},
 		{
-			cause:         Wrap(io.EOF, "something failed", "k3", "v3"),
+			cause:         Wrap(io.EOF, "something failed").With("k3", "v3"),
 			opts:          []interface{}{"k1", "v1", "k2", "v2"},
 			expectedMsg:   "something failed k3=v3 k1=v1 k2=v2: EOF",
 			expectedCause: io.EOF,
@@ -136,7 +136,7 @@ func TestAttach(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		err := Wrap(tt.cause, "", tt.opts...)
+		err := Wrap(tt.cause, "").With(tt.opts...)
 		actualMsg := err.Error()
 		if actualMsg != tt.expectedMsg {
 			t.Errorf("%d: expected=%q, actual=%q", i, tt.expectedMsg, actualMsg)
@@ -148,7 +148,7 @@ func TestAttach(t *testing.T) {
 
 		// only test if non-nil in the test case
 		if tt.expectedErr != nil {
-			if tt.expectedErr != err {
+			if tt.expectedErr.Error() != err.Error() {
 				t.Errorf("%d: error: expected=%v, actual=%v", i, tt.expectedErr, err)
 			}
 		}
@@ -165,15 +165,15 @@ func TestKeyvals(t *testing.T) {
 			keyvals: []interface{}{"msg", "message"},
 		},
 		{
-			err:     New("message", "k1", "v1", "k2", 2),
+			err:     New("message").With("k1", "v1", "k2", 2),
 			keyvals: []interface{}{"msg", "message", "k1", "v1", "k2", 2},
 		},
 		{
-			err:     Wrap(io.EOF, "message", "k1", "v1", "k2", 2),
+			err:     Wrap(io.EOF, "message").With("k1", "v1", "k2", 2),
 			keyvals: []interface{}{"msg", "message", "k1", "v1", "k2", 2, "cause", "EOF"},
 		},
 		{
-			err:     Wrap(io.EOF, "", "k1", "v1", "k2", 2),
+			err:     Wrap(io.EOF, "").With("k1", "v1", "k2", 2),
 			keyvals: []interface{}{"msg", "EOF", "k1", "v1", "k2", 2},
 		},
 	}
