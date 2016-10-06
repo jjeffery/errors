@@ -28,6 +28,11 @@ func (ctx context) Wrap(err error, msg string) Error {
 	return ctx.wrapError(err, msg)
 }
 
+// Keyvals implements the keyvalser interface.
+func (ctx context) Keyvals() []interface{} {
+	return ctx.keyvals
+}
+
 func (ctx context) With(keyvals ...interface{}) Context {
 	return ctx.withKeyvals(keyvals)
 }

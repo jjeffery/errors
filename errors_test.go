@@ -158,24 +158,46 @@ func TestAttach(t *testing.T) {
 
 func TestKeyvals(t *testing.T) {
 	tests := []struct {
-		err     error
-		keyvals []interface{}
+		err        error
+		errKeyvals []interface{}
+		ctx        Context
+		ctxKeyvals []interface{}
 	}{
 		{
-			err:     New("message"),
-			keyvals: []interface{}{"msg", "message"},
+			err:        New("message"),
+			errKeyvals: []interface{}{"msg", "message"},
 		},
 		{
-			err:     New("message").With("k1", "v1", "k2", 2),
-			keyvals: []interface{}{"msg", "message", "k1", "v1", "k2", 2},
+			err:        New("message").With("k1", "v1", "k2", 2),
+			errKeyvals: []interface{}{"msg", "message", "k1", "v1", "k2", 2},
 		},
 		{
-			err:     Wrap(io.EOF, "message").With("k1", "v1", "k2", 2),
-			keyvals: []interface{}{"msg", "message", "k1", "v1", "k2", 2, "cause", "EOF"},
+			err:        Wrap(io.EOF, "message"),
+			errKeyvals: []interface{}{"msg", "message", "cause", "EOF"},
 		},
 		{
-			err:     Wrap(io.EOF, "").With("k1", "v1", "k2", 2),
-			keyvals: []interface{}{"msg", "EOF", "k1", "v1", "k2", 2},
+			err:        Wrap(io.EOF, "message").With(),
+			errKeyvals: []interface{}{"msg", "message", "cause", "EOF"},
+		},
+		{
+			err:        Wrap(io.EOF, "message").With("k1", "v1", "k2", 2),
+			errKeyvals: []interface{}{"msg", "message", "k1", "v1", "k2", 2, "cause", "EOF"},
+		},
+		{
+			err:        Wrap(io.EOF, "").With("k1", "v1", "k2", 2),
+			errKeyvals: []interface{}{"msg", "EOF", "k1", "v1", "k2", 2},
+		},
+		{
+			ctx:        With(),
+			ctxKeyvals: nil,
+		},
+		{
+			ctx:        With("k1", "v1", "k2", 2),
+			ctxKeyvals: []interface{}{"k1", "v1", "k2", 2},
+		},
+		{
+			ctx:        With("k1", "v1", "k2", 2).With("k3", 3),
+			ctxKeyvals: []interface{}{"k1", "v1", "k2", 2, "k3", 3},
 		},
 	}
 
@@ -184,14 +206,27 @@ func TestKeyvals(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		keyvals, ok := tt.err.(keyvalser)
-		if !ok {
-			t.Errorf("%d: expected Keyvals(), none available", i)
-			continue
+		if tt.err != nil {
+			keyvals, ok := tt.err.(keyvalser)
+			if !ok {
+				t.Errorf("%d: expected Keyvals(), none available", i)
+				continue
+			}
+			kvs := keyvals.Keyvals()
+			if !reflect.DeepEqual(tt.errKeyvals, kvs) {
+				t.Errorf("%d: expected %v, actual %v", i, tt.errKeyvals, kvs)
+			}
 		}
-		kvs := keyvals.Keyvals()
-		if !reflect.DeepEqual(tt.keyvals, kvs) {
-			t.Errorf("%d: expected %v, actual %v", i, tt.keyvals, kvs)
+		if tt.ctx != nil {
+			keyvals, ok := tt.ctx.(keyvalser)
+			if !ok {
+				t.Errorf("%d: expected Keyvals(), none available", i)
+				continue
+			}
+			kvs := keyvals.Keyvals()
+			if !reflect.DeepEqual(tt.ctxKeyvals, kvs) {
+				t.Errorf("%d: expected %v, actual %v", i, tt.ctxKeyvals, kvs)
+			}
 		}
 	}
 }
