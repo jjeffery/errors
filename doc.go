@@ -120,4 +120,5 @@ package errors
 // comment at https://github.com/pkg/errors/issues/34#issuecomment-228231192.
 // This package has used the `keyvalser` interface as a mechanism for extracting
 // key/value pairs from an error. In practice this seems to work quite well, but
-// it is possible to write code that extracts information from the error.
+// it would be possible to write code that abuses this interface by extractng 
+// information from the error for use by the program.

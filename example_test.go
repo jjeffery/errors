@@ -42,9 +42,15 @@ func ExampleContext() {
 		fmt.Println(errors.Wrap(err, "cannot do another thing").With("n", n))
 	}
 
+	if !isValid(userID) {
+		// will include key value pairs for userID and document ID
+		fmt.Println(errors.New("invalid user"))
+	}
+
 	// Output:
 	// cannot do one thing userID=u1 documentID=d1: doOneThing: unable to finish
 	// cannot do another thing userID=u1 documentID=d1 n=0: doAnotherThing: not working properly
+	// invalid user userID=u1 documentID=d1
 }
 
 func doOneThing() (int, error) {
@@ -70,6 +76,10 @@ func doSomethingWithThing(name string) error {
 }
 
 func isValidName(name string) bool {
+	return false
+}
+
+func isValid(s string) bool {
 	return false
 }
 
