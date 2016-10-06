@@ -27,7 +27,7 @@ func Example() {
 var userID = "u1"
 var documentID = "d1"
 
-func ExampleContext() {
+func ExampleWith() {
 	// ... if a function has been called with userID and DocumentID ...
 	errors := errors.With("userID", userID, "documentID", documentID)
 
@@ -91,6 +91,29 @@ func ExampleNew() {
 	}
 	// Output:
 	// invalid name name=!not-valid
+}
+
+func doSomething() error {
+	return fmt.Errorf("not implemented")
+}
+
+func doSomethingWith(name string) error {
+	return fmt.Errorf("permission denied")
+}
+
+func ExampleWrap() {
+	if err := doSomething(); err != nil {
+		fmt.Println(errors.Wrap(err, "cannot do something"))
+	}
+
+	name := "otherthings.dat"
+	if err := doSomethingWith(name); err != nil {
+		fmt.Println(errors.Wrap(err, "cannot do something with").With("name", name))
+	}
+
+	// Output:
+	// cannot do something: not implemented
+	// cannot do something with name=otherthings.dat: permission denied
 }
 
 func ExampleCause() {
