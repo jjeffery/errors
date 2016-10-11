@@ -61,34 +61,33 @@ func (ctx context) withKeyvals(keyvals []interface{}) context {
 }
 
 func (ctx context) newError(msg string) *errorT {
-	ctx = ctx.clone()
 	return &errorT{
-		ctx: ctx,
+		ctx: ctx.clone(),
 		msg: msg,
 	}
 }
 
 func (ctx context) wrapError(cause error, msg string) *causeT {
-	ctx = ctx.clone()
 	return &causeT{
 		errorT: &errorT{
 			msg: msg,
-			ctx: ctx,
+			ctx: ctx.clone(),
 		},
 		cause: cause,
 	}
 }
 
 func (ctx context) attachError(cause error) Error {
-	if err, ok := cause.(Error); ok {
-		return err
+	if causeError, ok := cause.(Error); ok {
+		// the cause already implements the Error interface,
+		// so attach any context key/value pairs directly.
+		return causeError.With(ctx.keyvals...)
 	}
-	ctx = ctx.clone()
 
-	// the cause does not have a context, so create an attach
-	// wrapper error
+	// the cause does not implement the Error interface,
+	// so create a wrapper and attach the context key/value pairs.
 	return &attachT{
-		ctx:   ctx,
+		ctx:   ctx.clone(),
 		cause: cause,
 	}
 }
@@ -97,7 +96,8 @@ func (ctx context) appendKeyvals(keyvals []interface{}) []interface{} {
 	return append(keyvals, ctx.keyvals...)
 }
 
-func (ctx context) errorBuf(buf *bytes.Buffer) {
+// writeToBuf writes the context's key/value pairs to a buffer.
+func (ctx context) writeToBuf(buf *bytes.Buffer) {
 	keyvals := kv.Flatten(ctx.keyvals)
 	for i := 0; i < len(keyvals); i += 2 {
 		// kv.Flatten guarantees that every even-numbered index

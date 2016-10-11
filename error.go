@@ -2,11 +2,9 @@ package errors
 
 import (
 	"bytes"
-	"fmt"
 )
 
-var _ = fmt.Printf
-
+// errorT represents an error with a message and context.
 type errorT struct {
 	ctx context
 	msg string
@@ -16,10 +14,12 @@ type errorT struct {
 func (e *errorT) Error() string {
 	var buf bytes.Buffer
 	buf.WriteString(e.msg)
-	e.ctx.errorBuf(&buf)
+	e.ctx.writeToBuf(&buf)
 	return buf.String()
 }
 
+// With returns an error with additional key/value pairs attached.
+// It implements the Error interface.
 func (e *errorT) With(keyvals ...interface{}) Error {
 	return e.withKeyvals(keyvals)
 }
@@ -45,6 +45,8 @@ func (e *errorT) withKeyvals(keyvals []interface{}) *errorT {
 	}
 }
 
+// causeT represents an error with a message, context, and an error which
+// contains the original cause of the error condition.
 type causeT struct {
 	*errorT
 	cause error
@@ -54,12 +56,14 @@ type causeT struct {
 func (c *causeT) Error() string {
 	var buf bytes.Buffer
 	buf.WriteString(c.msg)
-	c.ctx.errorBuf(&buf)
+	c.ctx.writeToBuf(&buf)
 	buf.WriteString(": ")
 	buf.WriteString(c.cause.Error())
 	return buf.String()
 }
 
+// With returns an error with additional key/value pairs attached.
+// It implements the Error interface.
 func (c *causeT) With(keyvals ...interface{}) Error {
 	return &causeT{
 		errorT: c.errorT.withKeyvals(keyvals),
@@ -72,7 +76,7 @@ func (c *causeT) MarshalText() ([]byte, error) {
 	return []byte(c.Error()), nil
 }
 
-// Cause implements the causer interface, for compatibility with
+// Cause implements the causer interface, and is compatible with
 // the github.com/pkg/errors package.
 func (c *causeT) Cause() error {
 	return c.cause
@@ -89,6 +93,8 @@ func (c *causeT) Keyvals() []interface{} {
 	return keyvals
 }
 
+// attachT represents an error that has additional keyword/value pairs
+// attached to it.
 type attachT struct {
 	ctx   context
 	cause error
@@ -98,10 +104,12 @@ type attachT struct {
 func (a *attachT) Error() string {
 	var buf bytes.Buffer
 	buf.WriteString(a.cause.Error())
-	a.ctx.errorBuf(&buf)
+	a.ctx.writeToBuf(&buf)
 	return buf.String()
 }
 
+// With returns an error with additional key/value pairs attached.
+// It implements the Error interface.
 func (a *attachT) With(keyvals ...interface{}) Error {
 	return &attachT{
 		ctx:   a.ctx.withKeyvals(keyvals),
@@ -114,7 +122,7 @@ func (a *attachT) MarshalText() ([]byte, error) {
 	return []byte(a.Error()), nil
 }
 
-// Cause implements the causer interface, for compatibility with
+// Cause implements the causer interface, and is compatible with
 // the github.com/pkg/errors package.
 func (a *attachT) Cause() error {
 	return a.cause
