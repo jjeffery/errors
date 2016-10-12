@@ -1,18 +1,19 @@
 # errors [![GoDoc](https://godoc.org/github.com/jjeffery/errors?status.svg)](https://godoc.org/github.com/jjeffery/errors) [![License](http://img.shields.io/badge/license-MIT-green.svg?style=flat)](https://raw.githubusercontent.com/jjeffery/errors/master/LICENSE.md) [![Build Status](https://travis-ci.org/jjeffery/errors.svg?branch=master)](https://travis-ci.org/jjeffery/errors) [![Coverage Status](https://coveralls.io/repos/github/jjeffery/errors/badge.svg?branch=master)](https://coveralls.io/github/jjeffery/errors?branch=master) [![GoReportCard](https://goreportcard.com/badge/github.com/jjeffery/errors)](https://goreportcard.com/report/github.com/jjeffery/errors)
 
-Package `errors` provides a simple error API that works well with structured logging.
+Package `errors` provides simple error handling primitives that work well with structured logging.
 
 - [Acknowledgement](#acknowledgement)
 - [Background](#background)
-- [Creating Errors](#creating_errors)
+- [Creating errors](#creating-errors)
 - [Retrieving the cause of an error](#retrieving-the-cause-of-an-error)
 - [Retrieving key value pairs for structured logging](#retrieving-key-value-pairs-for-structured-logging)
 
 ## Acknowledgement
 
-Many of the ideas, some of the code, and some of the text for the documentation
-of this package is based on the excellent
-[github.com/pkg/errors](https://github.com/pkg/errors) package. 
+This package is inspired by the excellent
+[github.com/pkg/errors](https://github.com/pkg/errors) package. A significant
+amount of code and documentation in this package has been adapted from that
+source.
 
 A key difference between this package and github.com/pkg/errors is that
 this package has been designed to suit programs that make use of 
@@ -37,7 +38,7 @@ which applied recursively up the call stack results in error reports without con
 
 ## Creating errors
 
-The `errors` package provides three operations which combine to for a simple yet powerful system for enhancing the value of 
+The `errors` package provides three operations which combine to form a simple yet powerful system for enhancing the value of 
 returned errors:
 
 | Operation | Description                                      |
@@ -46,51 +47,53 @@ returned errors:
 | Wrap      | wrap an existing error with an optional message  |
 | With      | attach key/value pairs to an error               |
 
-### New: create a new error
+### New &mdash; create a new error
 
-Create a new error with the The [`errors.New`](https://godoc.org/github.com/jjeffery/errors#New) 
-function, which is source-compatible with the Go standard library `errors` package:
+The [`New`](https://godoc.org/github.com/jjeffery/errors#New) function
+is used to create an error. This function is compatible with the Go standard 
+library `errors` package:
 
 ```go
 err := errors.New("emit macho dwarf: elf header corrupted")
 ```
 
-### Wrap: add a message to an error
+### Wrap &mdash; add a message to an error
 
-The [`errors.Wrap`](https://godoc.org/github.com/jjeffery/errors#Wrap) function 
-returns a new error that adds a message to the original error. For example:
+The [`Wrap`](https://godoc.org/github.com/jjeffery/errors#Wrap) function 
+returns an error that adds a message to the original error. This additional
+message can be useful for putting the original error in context. For example:
 ```go
-err := errors.New("original cause")
+err := errors.New("permission denied")
 fmt.Println(err)
 
-err = errors.Wrap(err, "cannot do something")
+err = errors.Wrap(err, "cannot list directory contents")
 fmt.Println(err)
 
 // Output:
-// original cause
-// cannot do something: original cause
+// permission denied
+// cannot list directory contents: permission denied
 ```
 
-### With: add key/value pairs to an error
+### With &mdash; add key/value pairs to an error
 
-The [`errors.With`](https://godoc.org/github.com/jjeffery/errors#With) function 
-can be used to create or wrap an error that has key/value pairs attached:
+The [`With`](https://godoc.org/github.com/jjeffery/errors#With) function 
+accepts a variadic list of alternating key/value pairs, and returns an error
+context that can be used to create a new error or wrap an existing error.
 
 ```go
-// create new file
-err = errors.With("file", "testrun", "line", 101).New("syntax error")
+// create new error
+err = errors.With("file", "testrun", "line", 101).New("file locked")
+fmt.Println(err)
 
-// wrap existing file
-err = errors.With("attempt", 2).Wrap(err, "cannot continue")
+// wrap existing error
+err = errors.With("attempt", 3).Wrap(err, "retry failed")
+fmt.Println(err)
 
 // Output:
-// elf header corrupted file=testrun line=101
-// emit macho dwarf attempt=2: elf header corrupted file=testrun line=101
+// file locked file=testrun line=101
+// retry failed attempt=3: file locked file=testrun line=101
 ```
-
-The `With` function accepts a variadic list of alternating key/value pairs, and
-returns a context that can be used to create a new error or wrap an existing error.
-One useful pattern is to create an errors context that is used for an entire
+One useful pattern is to create an error context that is used for an entire
 function scope:
 
 ```go
@@ -115,6 +118,31 @@ func doSomethingWith(file string, line int) error {
 	return nil
 }
 ```
+
+The errors returned by `New` and `Wrap` provide a `With` method that enables
+a fluent-style of error handling:
+
+```go
+// create new error
+err = errors.New("file locked").With(
+    "file", "testrun", 
+	"line", 101,
+)
+fmt.Println(err)
+
+// wrap existing error
+err = errors.Wrap(err, "retry failed").With("attempt", 3)
+fmt.Println(err)
+
+// Output:
+// file locked file=testrun line=101
+// retry failed attempt=3: file locked file=testrun line=101
+```
+
+(Dave Cheney has written up some 
+[good reasons](https://github.com/pkg/errors/issues/15#issuecomment-221194128) 
+to avoid a fluent API. Experience will show if this presents a problem, but to 
+date it has felt like it leads to simpler, more readable code).
 
 ## Retrieving the cause of an error
 
@@ -172,10 +200,6 @@ func logError(logger log.Logger, err error) {
 	logger.Log(keyvals...)
 }
 ```
-
-This interface works well with the 
-[github.com/jjeffery/kv](https://github.com/jjeffery/kv) package, which
-provides improved type safety and clarity when working with key value pairs.
 
 > **GOOD ADVICE:** Do not use the `Keyvals` method on an error to retrieve the
 individual key/value pairs associated with an error for processing by the

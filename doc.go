@@ -1,9 +1,11 @@
 /*
-Package errors provides a simple error API that works well with structured logging.
+Package errors provides simple error handling primitives that work well with
+structured logging.
 
-Many of the ideas, much of the code, and even the text for the documentation
-of this package is based on the excellent
-github.com/pkg/errors package (https://github.com/pkg/errors).
+This package is inspired by the excellent
+github.com/pkg/errors package. A significant
+amount of code and documentation in this package has been adapted from that
+source.
 
 A key difference between this package and github.com/pkg/errors is that
 this package has been designed to suit programs that make use of
@@ -14,7 +16,8 @@ ultimately not included in that package.
 (See https://github.com/pkg/errors/issues/34 for details).
 
 If you are not using structured logging in your application and have no intention
-of doing so, use the github.com/pkg/errors package in preference to this one.
+of doing so, you will probably be better off using the github.com/pkg/errors
+package in preference to this one.
 
 Background
 
@@ -27,19 +30,85 @@ context or debugging information. The errors package allows programmers to
 add context to the failure path in their code in a way that does not destroy
 the original value of the error.
 
-Adding context to an error
+Creating errors
 
-The errors.Wrap function returns a new error that adds context to the
-original error. For example
- name := "some-file"
- number := 53
- err := doSomethingWith(name, number)
- if err != nil {
-     return errors.Wrap(err, "cannot do something").With(
-         "name", name,
-         "number", number,
-     )
+The `errors` package provides three operations which combine to form a simple
+yet powerful system for enhancing the value of returned errors:
+
+ New   create a new error
+ Wrap  wrap an existing error with an optional message
+ With  attach key/value pairs to an error
+
+The `New` function is used to create an error. This function is compatible
+with the Go standard library `errors` package:
+ err := errors.New("emit macho dwarf: elf header corrupted")
+
+The `Wrap` function returns an error that adds a message to the original
+error. This additional message can be useful for putting the original error in
+context. For example:
+ err := errors.New("permission denied")
+ fmt.Println(err)
+
+ err = errors.Wrap(err, "cannot list directory contents")
+ fmt.Println(err)
+
+ // Output:
+ // permission denied
+ // cannot list directory contents: permission denied
+
+The `With` function accepts a variadic list of alternating key/value pairs, and
+returns an error context that can be used to create a new error or wrap an existing error.
+ // create new error
+ err = errors.With("file", "testrun", "line", 101).New("file locked")
+ fmt.Println(err)
+
+ // wrap existing error
+ err = errors.With("attempt", 3).Wrap(err, "retry failed")
+ fmt.Println(err)
+
+ // Output:
+ // file locked file=testrun line=101
+ // retry failed attempt=3: file locked file=testrun line=101
+
+One useful pattern is to create an error context that is used for an entire
+function scope:
+ func doSomethingWith(file string, line int) error {
+     // set error context
+     errors := errors.With("file", file, "line", line)
+
+     if number <= 0 {
+         // file and line will be attached to the error
+         return errors.New("invalid number")
+     }
+
+     // ... later ...
+
+     if err := doOneThing(); err != nil {
+         // file and line will be attached to the error
+         return errors.Wrap(err, "cannot do one thing")
+     }
+
+     // ... and so on until ...
+
+     return nil
  }
+
+The errors returned by `New` and `Wrap` provide a `With` method that enables
+a fluent-style of error handling:
+ // create new error
+ err = errors.New("file locked").With(
+     "file", "testrun",
+     "line", 101,
+ )
+ fmt.Println(err)
+
+ // wrap existing error
+ err = errors.Wrap(err, "retry failed").With("attempt", 3)
+ fmt.Println(err)
+
+ // Output:
+ // file locked file=testrun line=101
+ // retry failed attempt=3: file locked file=testrun line=101
 
 Retrieving the cause of an error
 
@@ -100,10 +169,7 @@ Example using go-kit logging (https://github.com/go-kit/kit/tree/master/log):
      logger.Log(keyvals...)
  }
 
-This interface works well with the github.com/jjeffery/kv package, which
-provides improved type safety and clarity when working with key value pairs.
-
-GOOD ADVICE: Do not use the `Keyvals` method on an error to retrieve the
+GOOD ADVICE: Do not use the Keyvals method on an error to retrieve the
 individual key/value pairs associated with an error for processing by the
 calling program.
 */
@@ -112,7 +178,8 @@ package errors
 // BUG(jpj): This package makes use of a fluent API for attaching key/value
 // pairs to an error. Dave Cheney has written up some good reasons to avoid
 // this approach: see https://github.com/pkg/errors/issues/15#issuecomment-221194128.
-// Experience will show if this presents a problem.
+// Experience will show if this presents a problem, but to date it has felt like
+// it leads to simpler, more readable code.
 
 // BUG(jpj): Attaching key/value pairs to an error was considered for package
 // github.com/pkg/errors, but in the end it was not implemented because
@@ -120,5 +187,7 @@ package errors
 // comment at https://github.com/pkg/errors/issues/34#issuecomment-228231192.
 // This package has used the `keyvalser` interface as a mechanism for extracting
 // key/value pairs from an error. In practice this seems to work quite well, but
-// it would be possible to write code that abuses this interface by extractng 
-// information from the error for use by the program.
+// it would be possible to write code that abuses this interface by extractng
+// information from the error for use by the program. The thinking is that the
+// keyvalser interface is not an obvious part of the API as documented by GoDoc,
+// and that should help minimize abuse.
