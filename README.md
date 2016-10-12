@@ -2,25 +2,28 @@
 
 Package `errors` provides a simple error API that works well with structured logging.
 
+- [Acknowledgement](#acknowledgement)
 - [Background](#background)
-- [Adding context to an error](#adding-context-to-an-error)
+- [Creating Errors](#creating_errors)
 - [Retrieving the cause of an error](#retrieving-the-cause-of-an-error)
 - [Retrieving key value pairs for structured logging](#retrieving-key-value-pairs-for-structured-logging)
 
-Many of the ideas, much of the code, and even the text for the documentation
+## Acknowledgement
+
+Many of the ideas, some of the code, and some of the text for the documentation
 of this package is based on the excellent
 [github.com/pkg/errors](https://github.com/pkg/errors) package. 
 
 A key difference between this package and github.com/pkg/errors is that
 this package has been designed to suit programs that make use of 
-[structured logging](http://dev.splunk.com/view/logging-best-practices/SP-CAAADP6). 
+[structured logging](https://www.thoughtworks.com/radar/techniques/structured-logging). 
 Some of the ideas in this package [were proposed](https://github.com/pkg/errors/issues/34) 
 for package github.com/pkg/errors, but after a reasonable amount of consideration, were 
 ultimately not included in that package.
 
 > If you are not using structured logging in your application and have no intention
-of doing so, use the [github.com/pkg/errors](https://github.com/pkg/errors) package
-in preference to this one.
+of doing so, you will probably be better off using the 
+[github.com/pkg/errors](https://github.com/pkg/errors) package in preference to this one.
 
 ## Background
 
@@ -32,19 +35,84 @@ if err != nil {
 ```
 which applied recursively up the call stack results in error reports without context or debugging information. The `errors` package allows programmers to add context to the failure path in their code in a way that does not destroy the original value of the error.
 
-## Adding context to an error
+## Creating errors
+
+The `errors` package provides three operations which combine to for a simple yet powerful system for enhancing the value of 
+returned errors:
+
+| Operation | Description                                      |
+|-----------|--------------------------------------------------|
+| New       | create a new error                               | 
+| Wrap      | wrap an existing error with an optional message  |
+| With      | attach key/value pairs to an error               |
+
+### New: create a new error
+
+Create a new error with the The [`errors.New`](https://godoc.org/github.com/jjeffery/errors#New) 
+function, which is source-compatible with the Go standard library `errors` package:
+
+```go
+err := errors.New("emit macho dwarf: elf header corrupted")
+```
+
+### Wrap: add a message to an error
 
 The [`errors.Wrap`](https://godoc.org/github.com/jjeffery/errors#Wrap) function 
-returns a new error that adds context to the original error. For example
+returns a new error that adds a message to the original error. For example:
 ```go
-name := "some-file"
-number := 53
-err := doSomethingWith(name, number)
-if err != nil {
-    return errors.Wrap(err, "cannot do something").With( 
-        "name", name,
-        "number", number,
-    )
+err := errors.New("original cause")
+fmt.Println(err)
+
+err = errors.Wrap(err, "cannot do something")
+fmt.Println(err)
+
+// Output:
+// original cause
+// cannot do something: original cause
+```
+
+### With: add key/value pairs to an error
+
+The [`errors.With`](https://godoc.org/github.com/jjeffery/errors#With) function 
+can be used to create or wrap an error that has key/value pairs attached:
+
+```go
+// create new file
+err = errors.With("file", "testrun", "line", 101).New("syntax error")
+
+// wrap existing file
+err = errors.With("attempt", 2).Wrap(err, "cannot continue")
+
+// Output:
+// elf header corrupted file=testrun line=101
+// emit macho dwarf attempt=2: elf header corrupted file=testrun line=101
+```
+
+The `With` function accepts a variadic list of alternating key/value pairs, and
+returns a context that can be used to create a new error or wrap an existing error.
+One useful pattern is to create an errors context that is used for an entire
+function scope:
+
+```go
+func doSomethingWith(file string, line int) error {
+	// set error context
+	errors := errors.With("file", file, "line", line)
+	
+	if number <= 0 {
+		// file and line will be attached to the error
+		return errors.New("invalid number")
+	}
+	
+	// ... later ...
+	
+	if err := doOneThing(); err != nil {
+		// file and line will be attached to the error
+		return errors.Wrap(err, "cannot do one thing")
+	}
+	
+	// ... and so on until ...
+	
+	return nil
 }
 ```
 
