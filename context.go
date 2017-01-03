@@ -3,6 +3,7 @@ package errors
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/jjeffery/kv"
 )
@@ -16,16 +17,26 @@ func (ctx context) New(msg string) Error {
 	return ctx.newError(msg)
 }
 
-func (ctx context) Wrap(err error, msg string) Error {
+func (ctx context) Wrap(err error, msg ...string) Error {
 	if err == nil {
 		return nil
 	}
-	if msg == "" {
+	// strip out any empty strings in the msg slice
+	{
+		v := make([]string, 0, len(msg))
+		for _, m := range msg {
+			if m != "" {
+				v = append(v, m)
+			}
+		}
+		msg = v
+	}
+	if len(msg) == 0 {
 		// A wrap without a message just attaches the options
 		// to the error.
 		return ctx.attachError(err)
 	}
-	return ctx.wrapError(err, msg)
+	return ctx.wrapError(err, strings.Join(msg, ": "))
 }
 
 // Keyvals implements the keyvalser interface.
