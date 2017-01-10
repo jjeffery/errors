@@ -13,6 +13,7 @@ type context struct {
 	keyvals []interface{}
 }
 
+// New creates a new context.
 func (ctx context) New(msg string) Error {
 	return ctx.newError(msg)
 }
