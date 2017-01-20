@@ -92,14 +92,6 @@ func (ctx context) wrapError(cause error, msg string) *causeT {
 }
 
 func (ctx context) attachError(cause error) Error {
-	if causeError, ok := cause.(Error); ok {
-		// the cause already implements the Error interface,
-		// so attach any context key/value pairs directly.
-		return causeError.With(ctx.keyvals...)
-	}
-
-	// the cause does not implement the Error interface,
-	// so create a wrapper and attach the context key/value pairs.
 	return &attachT{
 		ctx:   ctx.clone(),
 		cause: cause,

@@ -202,7 +202,7 @@ func TestAttach(t *testing.T) {
 		{
 			cause:         Wrap(io.EOF, "something failed").With("k3", "v3"),
 			opts:          []interface{}{"k1", "v1", "k2", "v2"},
-			expectedMsg:   "something failed k3=v3 k1=v1 k2=v2: EOF",
+			expectedMsg:   "something failed k3=v3: EOF k1=v1 k2=v2",
 			expectedCause: io.EOF,
 		},
 	}
