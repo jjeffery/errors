@@ -2,6 +2,7 @@ package errors
 
 import (
 	"encoding"
+	"fmt"
 	"io"
 	"reflect"
 	"testing"
@@ -37,14 +38,84 @@ func TestNew(t *testing.T) {
 			opts: []interface{}{
 				"key", time.Time{},
 			},
-			expect: "msg key=0001-01-01 00:00:00 +0000 UTC",
+			expect: "msg key=0001-01-01T00:00:00Z",
+		},
+		{
+			msg: "msg",
+			opts: []interface{}{
+				"nil1", nil,
+				"nil2", []byte(nil),
+			},
+			expect: "msg nil1=null nil2=null",
+		},
+		{
+			msg: "msg",
+			opts: []interface{}{
+				"b1", []byte("noquotes"),
+				"b2", []byte("needs quotes"),
+				"b3", []byte("needs \\ \"escaped quotes\""),
+			},
+			expect: `msg b1=noquotes b2="needs quotes" b3="needs \\ \"escaped quotes\""`,
+		},
+		{
+			msg: "msg",
+			opts: []interface{}{
+				"s1", "noquotes",
+				"s2", "needs quotes",
+				"s3", "needs \\ \"escaped quotes\"",
+			},
+			expect: `msg s1=noquotes s2="needs quotes" s3="needs \\ \"escaped quotes\""`,
+		},
+		{
+			msg: "msg",
+			opts: []interface{}{
+				"f1", failingTextMarshaler(0),
+			},
+			expect: `msg f1="<ERROR>"`,
+		},
+		{
+			msg: "msg",
+			opts: []interface{}{
+				"e1", fmt.Errorf("this failed"),
+			},
+			expect: `msg e1="this failed"`,
+		},
+		{
+			msg: "msg",
+			opts: []interface{}{
+				"s1", testStringer("I'm a Stringer"),
+			},
+			expect: `msg s1="Stringer: I'm a Stringer"`,
+		},
+		{
+			msg: "msg",
+			opts: []interface{}{
+				"p1", func() *int { n := 0; return &n }(),
+				"p2", func() *int32 { return nil }(),
+				"p3", func() *int64 { var n int64 = 3; return &n }(),
+			},
+			expect: `msg p1=0 p2=null p3=3`,
+		},
+		{
+			msg: "msg",
+			opts: []interface{}{
+				"x1", struct{ v int }{},
+			},
+			expect: `msg x1={0}`,
+		},
+		{
+			msg: "msg",
+			opts: []interface{}{
+				"p1", panicingStringer("I can't do this"),
+			},
+			expect: `msg p1="<PANIC>"`,
 		},
 	}
 
-	for _, tt := range tests {
+	for i, tt := range tests {
 		got := New(tt.msg).With(tt.opts...)
 		if got.Error() != tt.expect {
-			t.Errorf("New.Error(): got: %q, want %q", got, tt.expect)
+			t.Errorf("%d: New.Error(): got: %q, want %q", i, got, tt.expect)
 		}
 	}
 }
@@ -272,4 +343,22 @@ func TestMarshalText(t *testing.T) {
 			t.Errorf("%d: want %q, got %q", i, want, got)
 		}
 	}
+}
+
+type failingTextMarshaler int
+
+func (m failingTextMarshaler) MarshalText() ([]byte, error) {
+	return nil, fmt.Errorf("cannot marshal text")
+}
+
+type testStringer string
+
+func (s testStringer) String() string {
+	return "Stringer: " + string(s)
+}
+
+type panicingStringer string
+
+func (s panicingStringer) String() string {
+	panic(s)
 }
