@@ -104,8 +104,8 @@ func (ctx context) writeToBuf(buf *bytes.Buffer) {
 	if len(ctx.keyvals) == 0 {
 		return
 	}
-	kvlist := kv.List(ctx.keyvals)
-	b, _ := kvlist.MarshalText()
+	// kv.List.MarshalText does not return a non-nil error.
+	b, _ := kv.List(ctx.keyvals).MarshalText()
 	if buf.Len() > 0 {
 		buf.WriteRune(' ')
 	}
