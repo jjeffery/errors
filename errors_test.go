@@ -38,7 +38,7 @@ func TestNew(t *testing.T) {
 			opts: []interface{}{
 				"key", time.Time{},
 			},
-			expect: "msg key=0001-01-01T00:00:00Z",
+			expect: `msg key="0001-01-01T00:00:00Z"`,
 		},
 		{
 			msg: "msg",
@@ -101,7 +101,7 @@ func TestNew(t *testing.T) {
 			opts: []interface{}{
 				"x1", struct{ v int }{},
 			},
-			expect: `msg x1={0}`,
+			expect: `msg x1="{0}"`,
 		},
 		{
 			msg: "msg",

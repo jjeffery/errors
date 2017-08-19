@@ -90,7 +90,7 @@ func ExampleNew() {
 		fmt.Println(errors.New("invalid name").With("name", name))
 	}
 	// Output:
-	// invalid name name=!not-valid
+	// invalid name name="!not-valid"
 }
 
 func doSomething() error {
@@ -113,7 +113,7 @@ func ExampleWrap() {
 
 	// Output:
 	// cannot do something: not implemented
-	// cannot do something with name=otherthings.dat: permission denied
+	// cannot do something with name="otherthings.dat": permission denied
 }
 
 func ExampleCause() {
