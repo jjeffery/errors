@@ -131,35 +131,51 @@ type nilError struct{}
 
 func (nilError) Error() string { return "nil error" }
 
+type nilCauseError struct{}
+
+func (e *nilCauseError) Error() string { return "nil cause error" }
+
+func (e *nilCauseError) Cause() error { return nil }
+
+var nilCauseErrorVal = &nilCauseError{}
+
 func TestCause(t *testing.T) {
 	x := New("error")
 	tests := []struct {
 		err  error
 		want error
-	}{{
-		// nil error is nil
-		err:  nil,
-		want: nil,
-	}, {
-		// explicit nil error is nil
-		err:  (error)(nil),
-		want: nil,
-	}, {
-		// typed nil is nil
-		err:  (*nilError)(nil),
-		want: (*nilError)(nil),
-	}, {
-		// uncaused error is unaffected
-		err:  io.EOF,
-		want: io.EOF,
-	}, {
-		// caused error returns cause
-		err:  Wrap(io.EOF, "ignored"),
-		want: io.EOF,
-	}, {
-		err:  x, // return from errors.New
-		want: x,
-	}}
+	}{
+		{
+			// nil error is nil
+			err:  nil,
+			want: nil,
+		}, {
+			// explicit nil error is nil
+			err:  (error)(nil),
+			want: nil,
+		}, {
+			// typed nil is nil
+			err:  (*nilError)(nil),
+			want: (*nilError)(nil),
+		}, {
+			// uncaused error is unaffected
+			err:  io.EOF,
+			want: io.EOF,
+		}, {
+			// caused error returns cause
+			err:  Wrap(io.EOF, "ignored"),
+			want: io.EOF,
+		}, {
+			err:  x, // return from errors.New
+			want: x,
+		}, {
+			// when the error implements the causer interface,
+			// but Cause() returns nil, we want to return
+			// the error, not the cause
+			err:  nilCauseErrorVal,
+			want: nilCauseErrorVal,
+		},
+	}
 
 	for i, tt := range tests {
 		got := Cause(tt.err)
