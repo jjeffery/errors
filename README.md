@@ -2,6 +2,12 @@
 
 Package `errors` provides simple error handling primitives that work well with structured logging.
 
+**This package is deprecated.** Use the [kv](https://github.com/jjeffery/kv) package instead. It provides
+support for creating errors with key/value pairs. The idea of having a drop-in replacement for the 
+standard library `errors` package was based on the fact that `errors` only exported one simple function. 
+The Go 2 draft proposes additional functions and types for the standard library `errors` package, and
+any attempts to use the new standard library package with this package will be annoying.
+
 - [Acknowledgement](#acknowledgement)
 - [Background](#background)
 - [Creating errors](#creating-errors)
