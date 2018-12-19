@@ -71,7 +71,7 @@ func TestNew(t *testing.T) {
 			opts: []interface{}{
 				"f1", failingTextMarshaler(0),
 			},
-			expect: `msg f1=<ERROR>`,
+			expect: `msg f1=ERROR`,
 		},
 		{
 			msg: "msg",
@@ -108,7 +108,7 @@ func TestNew(t *testing.T) {
 			opts: []interface{}{
 				"p1", panicingStringer("I can't do this"),
 			},
-			expect: `msg p1=<PANIC>`,
+			expect: `msg p1=PANIC`,
 		},
 	}
 

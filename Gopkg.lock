@@ -2,14 +2,16 @@
 
 
 [[projects]]
+  branch = "master"
+  digest = "1:7440ba4b66d5ad11c42cabcf8468cab40a1a5f5dbfe3285b8c67ac5a15e12e8b"
   name = "github.com/jjeffery/kv"
   packages = ["."]
-  revision = "e16ed12583c8a365f8ae714c7564eeef173447dc"
-  version = "v1.0"
+  pruneopts = ""
+  revision = "049b676374d81806149db59be28eb95f213c631a"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "9d1206225eca60c22ee606ad424d0498c3a85d4a2929bba0e3ab2927506be510"
+  input-imports = ["github.com/jjeffery/kv"]
   solver-name = "gps-cdcl"
   solver-version = 1
