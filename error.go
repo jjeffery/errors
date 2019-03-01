@@ -82,6 +82,12 @@ func (c *causeT) Cause() error {
 	return c.cause
 }
 
+// Unwrap implements the Wrapper interface defined in the
+// Go 2 draft designs for error inspection and printing.
+func (c *causeT) Unwrap() error {
+	return c.cause
+}
+
 // Keyvals returns the contents of the error
 // as an array of alternating keys and values.
 func (c *causeT) Keyvals() []interface{} {
@@ -125,6 +131,12 @@ func (a *attachT) MarshalText() ([]byte, error) {
 // Cause implements the causer interface, and is compatible with
 // the github.com/pkg/errors package.
 func (a *attachT) Cause() error {
+	return a.cause
+}
+
+// Unwrap implements the Wrapper interface defined in the
+// Go 2 draft designs for error inspection and printing.
+func (a *attachT) Unwrap() error {
 	return a.cause
 }
 
